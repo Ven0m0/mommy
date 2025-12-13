@@ -9,6 +9,7 @@ repository = "https://github.com/sleepymincy/mommy"
 keywords = ["mommy", "silly", "shell", "cli"]
 categories = ["command-line-utilities"]
 readme = "README.md"
+include = ["src/**/*", "LICENSE", "README.md"]
 
 [[bin]]
 name = "mommy"
