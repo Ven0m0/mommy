@@ -6,6 +6,8 @@ Clearly inspired by by [Gankra/cargo-mommy](<https://github.com/Gankra/cargo-mom
 
 After using Bash  implementation for a bit, I've decided to try writing my own implementation in Rust for the sake of learning new things. ~~In the process I think I got too far lost in the cult of Rust.~~
 
+**NEW:** Now with full cargo-mommy integration! Use as both `mommy` for shell commands and `cargo-mommy` as a Cargo subcommand!
+
 ## Quick Links:
 - [How to build](#how-to-build)
 - [Easy install](#easy-install)
@@ -23,21 +25,31 @@ After using Bash  implementation for a bit, I've decided to try writing my own i
 ## Easy install:
 - Get [Rust](https://rustup.rs/)
 - `cargo install shell-mommy`
+- This will install both `mommy` (for shell commands) and `cargo-mommy` (for cargo commands)
 
 ## Configuration:
-Available environment variables: 
-- `SHELL_MOMMYS_EMOTES` - to set the emotes to anything u want
-- `SHELL_MOMMYS_LITTLE` - to set the petnames mommy is using towards u
-- `SHELL_MOMMYS_ROLES` - to change mommy to daddy or whatever else
-- `SHELL_MOMMYS_PRONOUNS` - to change mommy's pronouns
-- `SHELL_MOMMYS_MOODS` - picks the set of possible responses (default: "chill", possible values: "chill", "ominous", "thirsty")
-- `SHELL_MOMMYS_COLOR` - to change text color
-- `SHELL_MOMMYS_STYLE` - to change text style
-- `SHELL_MOMMYS_COLOR_RGB` - to set custom rgb color for the text
-- `SHELL_MOMMYS_ALIASES` - provide path to your aliases file for mommy to source
-- `SHELL_MOMMYS_AFFIRMATIONS` - provide a path to a valid `.json` file, formatted exactly like [assets/affirmations.json](https://github.com/sleepymincy/mommy/blob/master/assets/affirmations.json), otherwise the code will fall back to built-in default affirmations
-- `SHELL_MOMMYS_NEEDY` - can be `1`, or `0` (default), decides if mommy is accepting exit code as an argument, or a command
-- `SHELL_MOMMY_ONLY_NEGATIVE` - can be `1` or `0` (default), decides if mommy only talks when exit code is not 0
+
+### Environment Variables
+
+This tool supports **dual prefixes** for environment variables:
+- `SHELL_MOMMYS_*` - for shell command usage (e.g., `mommy ls`)
+- `CARGO_MOMMYS_*` - for cargo subcommand usage (e.g., `cargo mommy build`)
+
+The tool automatically detects which binary you're using and prefers the appropriate prefix, with fallback support for cross-compatibility.
+
+Available environment variables:
+- `SHELL_MOMMYS_EMOTES` / `CARGO_MOMMYS_EMOTES` - to set the emotes to anything u want
+- `SHELL_MOMMYS_LITTLE` / `CARGO_MOMMYS_LITTLE` - to set the petnames mommy is using towards u
+- `SHELL_MOMMYS_ROLES` / `CARGO_MOMMYS_ROLES` - to change mommy to daddy or whatever else (auto-detected from binary name)
+- `SHELL_MOMMYS_PRONOUNS` / `CARGO_MOMMYS_PRONOUNS` - to change mommy's pronouns
+- `SHELL_MOMMYS_MOODS` / `CARGO_MOMMYS_MOODS` - picks the set of possible responses (default: "chill", possible values: "chill", "ominous", "thirsty")
+- `SHELL_MOMMYS_COLOR` / `CARGO_MOMMYS_COLOR` - to change text color
+- `SHELL_MOMMYS_STYLE` / `CARGO_MOMMYS_STYLE` - to change text style
+- `SHELL_MOMMYS_COLOR_RGB` / `CARGO_MOMMYS_COLOR_RGB` - to set custom rgb color for the text
+- `SHELL_MOMMYS_ALIASES` / `CARGO_MOMMYS_ALIASES` - provide path to your aliases file for mommy to source
+- `SHELL_MOMMYS_AFFIRMATIONS` / `CARGO_MOMMYS_AFFIRMATIONS` - provide a path to a valid `.json` file, formatted exactly like [assets/affirmations.json](https://github.com/sleepymincy/mommy/blob/master/assets/affirmations.json), otherwise the code will fall back to built-in default affirmations
+- `SHELL_MOMMYS_NEEDY` / `CARGO_MOMMYS_NEEDY` - can be `1`, or `0` (default), decides if mommy is accepting exit code as an argument, or a command
+- `SHELL_MOMMY_ONLY_NEGATIVE` / `CARGO_MOMMY_ONLY_NEGATIVE` - can be `1` or `0` (default), decides if mommy only talks when exit code is not 0
 
 You can either specify environment variables every time you run mommy:
 ```ansi
@@ -93,6 +105,61 @@ export PS1="\$(mommy \$?)$PS1"
 ```
 
 You can also change `affirmations.json` before building, or load your own with `SHELL_MOMMYS_AFFIRMATIONS` during runtime, to un-degenerate this piece of software or make it worse. I'm not the one to judge.
+
+## Cargo-Mommy Features
+
+The tool now includes full `cargo-mommy` compatibility! You can use it as a Cargo subcommand:
+
+### Basic Usage
+
+```bash
+# Use as a cargo subcommand
+cargo mommy build
+cargo mommy test
+cargo mommy run
+
+# Quiet mode - suppresses mommy's output
+cargo mommy --quiet build
+cargo mommy -q test
+```
+
+### Role Transformation
+
+Transform the binary into different roles without reinstalling:
+
+```bash
+# Create a cargo-daddy binary
+mommy i mean daddy
+# or
+cargo mommy i mean daddy
+
+# Now you can use:
+cargo daddy build
+```
+
+### Advanced Features
+
+- **Recursion Protection**: Automatically tracks recursion depth up to 100 levels to prevent infinite loops
+- **Binary Name Detection**: Automatically detects if you're using `cargo-mommy` vs `mommy` and adjusts behavior
+- **Dual Environment Variable Support**: Works with both `CARGO_MOMMYS_*` and `SHELL_MOMMYS_*` prefixes
+- **Quiet Mode**: Use `--quiet` or `-q` flags to suppress affirmations while still running commands
+
+### Example Cargo Usage
+
+```bash
+# Set cargo-specific variables
+export CARGO_MOMMYS_ROLES="daddy"
+export CARGO_MOMMYS_PRONOUNS="his"
+export CARGO_MOMMYS_LITTLE="kiddo"
+
+# Run cargo commands with affirmations
+cargo mommy build --release
+# daddy is so proud of his little kiddo~ 💞
+
+# Use quiet mode for CI/CD
+cargo mommy -q test
+# (runs tests silently without affirmations)
+```
 
 ### Moods System (Advanced Responses)
 

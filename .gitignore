@@ -1,1 +1,27 @@
-/target
+# Rust
+/target/
+**/*.rs.bk
+*.pdb
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Build artifacts
+*.deb
+*.rpm
+*.pkg.tar.zst
+pkg/
+src/
+debian-package/
+
+# Temporary files
+*.tmp
+*.log
+
+# Keep Cargo.lock for binary projects
+# Cargo.lock
