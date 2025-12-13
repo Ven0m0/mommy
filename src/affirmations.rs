@@ -23,6 +23,22 @@ pub struct Affirmations {
     pub negative: Vec<String>,
 }
 
+fn affirmations_from_file(mut file: AffirmationsFile, mood: Option<&str>) -> Affirmations {
+    if let Some(mood) = mood {
+        if let Some(mut mood_set) = file.moods.remove(mood) {
+            return Affirmations {
+                positive: std::mem::take(&mut mood_set.positive),
+                negative: std::mem::take(&mut mood_set.negative),
+            };
+        }
+    }
+
+    Affirmations {
+        positive: file.positive,
+        negative: file.negative,
+    }
+}
+
 /// Loads the embedded affirmations without mood support.
 ///
 /// This function is kept for backward compatibility with code that doesn't use the mood system.
@@ -31,27 +47,14 @@ pub struct Affirmations {
 pub fn load_affirmations() -> Option<Affirmations> {
     let json_str = include_str!("../assets/affirmations.json");
     let file: AffirmationsFile = serde_json::from_str(json_str).ok()?;
-    Some(Affirmations {
-        positive: file.positive,
-        negative: file.negative,
-    })
+    Some(affirmations_from_file(file, None))
 }
 
 pub fn load_affirmations_with_mood(mood: &str) -> Option<Affirmations> {
     let json_str = include_str!("../assets/affirmations.json");
-    let mut file: AffirmationsFile = serde_json::from_str(json_str).ok()?;
+    let file: AffirmationsFile = serde_json::from_str(json_str).ok()?;
 
-    if let Some(mut mood_set) = file.moods.remove(mood) {
-        Some(Affirmations {
-            positive: std::mem::take(&mut mood_set.positive),
-            negative: std::mem::take(&mut mood_set.negative),
-        })
-    } else {
-        Some(Affirmations {
-            positive: file.positive,
-            negative: file.negative,
-        })
-    }
+    Some(affirmations_from_file(file, Some(mood)))
 }
 
 /// Loads custom affirmations from a file without mood support.
@@ -62,10 +65,7 @@ pub fn load_affirmations_with_mood(mood: &str) -> Option<Affirmations> {
 pub fn load_custom_affirmations<P: AsRef<Path>>(path: P) -> Option<Affirmations> {
     let json_str = fs::read_to_string(&path).ok()?;
     let file: AffirmationsFile = serde_json::from_str(&json_str).ok()?;
-    Some(Affirmations {
-        positive: file.positive,
-        negative: file.negative,
-    })
+    Some(affirmations_from_file(file, None))
 }
 
 pub fn load_custom_affirmations_with_mood<P: AsRef<Path>>(
@@ -73,19 +73,9 @@ pub fn load_custom_affirmations_with_mood<P: AsRef<Path>>(
     mood: &str,
 ) -> Option<Affirmations> {
     let json_str = fs::read_to_string(&path).ok()?;
-    let mut file: AffirmationsFile = serde_json::from_str(&json_str).ok()?;
+    let file: AffirmationsFile = serde_json::from_str(&json_str).ok()?;
 
-    if let Some(mut mood_set) = file.moods.remove(mood) {
-        Some(Affirmations {
-            positive: std::mem::take(&mut mood_set.positive),
-            negative: std::mem::take(&mut mood_set.negative),
-        })
-    } else {
-        Some(Affirmations {
-            positive: file.positive,
-            negative: file.negative,
-        })
-    }
+    Some(affirmations_from_file(file, Some(mood)))
 }
 
 #[cfg(test)]

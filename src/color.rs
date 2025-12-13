@@ -17,13 +17,15 @@ pub fn color_from_name(name: &str) -> Option<Color> {
 }
 
 pub fn color_from_rgb(rgb_str: &str) -> Option<Color> {
-    let parts: Vec<&str> = rgb_str.split(',').collect();
-    if parts.len() != 3 {
+    let mut parts = rgb_str.split(',').map(str::trim);
+    let r = parts.next()?.parse::<u8>().ok()?;
+    let g = parts.next()?.parse::<u8>().ok()?;
+    let b = parts.next()?.parse::<u8>().ok()?;
+
+    if parts.next().is_some() {
         return None;
     }
-    let r = parts[0].trim().parse::<u8>().ok()?;
-    let g = parts[1].trim().parse::<u8>().ok()?;
-    let b = parts[2].trim().parse::<u8>().ok()?;
+
     Some(Color::RGB(r, g, b))
 }
 
