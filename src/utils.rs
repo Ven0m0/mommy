@@ -1,8 +1,11 @@
-use std::io::{self, Write};
 use crate::config::ConfigMommy;
+use std::io::{self, Write};
 
 pub fn parse_string(s: &str) -> Vec<String> {
-    s.split('/').map(|token| token.trim().to_lowercase()).filter(|token| !token.is_empty()).collect()
+    s.split('/')
+        .map(|token| token.trim().to_lowercase())
+        .filter(|token| !token.is_empty())
+        .collect()
 }
 
 pub fn random_string_pick(input: &str) -> Option<String> {
@@ -83,12 +86,15 @@ mod tests {
     fn test_fill_template() {
         fastrand::seed(42);
         let mut config = load_config();
-        config.roles    = "daddy/mommy".to_string();
+        config.roles = "daddy/mommy".to_string();
         config.pronouns = "his/her".to_string();
-        config.little   = "baby".to_string();
-        config.emotes   = "❤️‍🔥/🤓".to_string();
+        config.little = "baby".to_string();
+        config.emotes = "❤️‍🔥/🤓".to_string();
 
-        let template = fill_template("{roles} thinks {pronouns} {little} earned a big hug~ {emotes}", &config);
+        let template = fill_template(
+            "{roles} thinks {pronouns} {little} earned a big hug~ {emotes}",
+            &config,
+        );
         assert_eq!(template, "mommy thinks his baby earned a big hug~ ❤️‍🔥");
     }
 }

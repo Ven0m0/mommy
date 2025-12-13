@@ -23,19 +23,17 @@ pub fn detect_role_from_binary() -> String {
     env::current_exe()
         .ok()
         .and_then(|path| {
-            path.file_name()
-                .and_then(|name| name.to_str())
-                .map(|name| {
-                    // Handle both "cargo-mommy", "cargo-daddy" and plain "mommy", "daddy"
-                    let name = name.strip_prefix("cargo-").unwrap_or(name);
-                    // Extract role name (mommy, daddy, etc.)
-                    if name.contains("daddy") {
-                        "daddy".to_string()
-                    } else {
-                        // Default to mommy
-                        "mommy".to_string()
-                    }
-                })
+            path.file_name().and_then(|name| name.to_str()).map(|name| {
+                // Handle both "cargo-mommy", "cargo-daddy" and plain "mommy", "daddy"
+                let name = name.strip_prefix("cargo-").unwrap_or(name);
+                // Extract role name (mommy, daddy, etc.)
+                if name.contains("daddy") {
+                    "daddy".to_string()
+                } else {
+                    // Default to mommy
+                    "mommy".to_string()
+                }
+            })
         })
         .unwrap_or_else(|| "mommy".to_string())
 }
@@ -68,19 +66,16 @@ fn get_env_with_fallback(suffix: &str, default: &str) -> String {
     let primary_key = format!("{}_{}", prefix, suffix);
 
     // Try primary key first (CARGO_MOMMYS_* or SHELL_MOMMYS_*)
-    if let Ok(val) = env::var(&primary_key) {
-        return val;
-    }
-
-    // Fallback to SHELL_MOMMYS_* if we're using CARGO prefix
-    if prefix.starts_with("CARGO_") {
-        let fallback_key = format!("SHELL_MOMMYS_{}", suffix);
-        if let Ok(val) = env::var(&fallback_key) {
-            return val;
-        }
-    }
-
-    default.to_string()
+    env::var(&primary_key)
+        .or_else(|_| {
+            // Fallback to SHELL_MOMMYS_* if we're using CARGO prefix
+            if prefix.starts_with("CARGO_") {
+                env::var(format!("SHELL_MOMMYS_{}", suffix))
+            } else {
+                Err(env::VarError::NotPresent)
+            }
+        })
+        .unwrap_or_else(|_| default.to_string())
 }
 
 /// Helper to get optional env var with fallback
@@ -88,20 +83,16 @@ fn get_env_optional_with_fallback(suffix: &str) -> Option<String> {
     let prefix = get_env_prefix();
     let primary_key = format!("{}_{}", prefix, suffix);
 
-    // Try primary key first
-    if let Ok(val) = env::var(&primary_key) {
-        return Some(val);
-    }
-
-    // Fallback to SHELL_MOMMYS_* if we're using CARGO prefix
-    if prefix.starts_with("CARGO_") {
-        let fallback_key = format!("SHELL_MOMMYS_{}", suffix);
-        if let Ok(val) = env::var(&fallback_key) {
-            return Some(val);
-        }
-    }
-
-    None
+    env::var(&primary_key)
+        .or_else(|_| {
+            // Fallback to SHELL_MOMMYS_* if we're using CARGO prefix
+            if prefix.starts_with("CARGO_") {
+                env::var(format!("SHELL_MOMMYS_{}", suffix))
+            } else {
+                Err(env::VarError::NotPresent)
+            }
+        })
+        .ok()
 }
 
 /// Helper to check boolean env var with fallback
@@ -109,34 +100,30 @@ fn get_env_bool_with_fallback(suffix: &str) -> bool {
     let prefix = get_env_prefix();
     let primary_key = format!("{}_{}", prefix, suffix);
 
-    // Try primary key first
-    if env::var(&primary_key).is_ok_and(|v| v == "1") {
-        return true;
-    }
-
-    // Fallback to SHELL_MOMMYS_* if we're using CARGO prefix
-    if prefix.starts_with("CARGO_") {
-        let fallback_key = format!("SHELL_MOMMYS_{}", suffix);
-        if env::var(&fallback_key).is_ok_and(|v| v == "1") {
-            return true;
-        }
-    }
-
-    false
+    env::var(&primary_key)
+        .or_else(|_| {
+            // Fallback to SHELL_MOMMYS_* if we're using CARGO prefix
+            if prefix.starts_with("CARGO_") {
+                env::var(format!("SHELL_MOMMYS_{}", suffix))
+            } else {
+                Err(env::VarError::NotPresent)
+            }
+        })
+        .is_ok_and(|v| v == "1")
 }
 
 pub fn load_config() -> ConfigMommy {
-    let pronouns        = get_env_with_fallback("PRONOUNS", "her");
-    let roles           = get_env_with_fallback("ROLES", &detect_role_from_binary());
-    let little          = get_env_with_fallback("LITTLE", "girl");
-    let emotes          = get_env_with_fallback("EMOTES", "💖/💗/💓/💞");
-    let color           = get_env_with_fallback("COLOR", "white");
-    let style           = get_env_with_fallback("STYLE", "bold");
-    let color_rgb       = get_env_optional_with_fallback("COLOR_RGB");
-    let aliases         = get_env_optional_with_fallback("ALIASES");
-    let affirmations    = get_env_optional_with_fallback("AFFIRMATIONS");
-    let needy           = get_env_bool_with_fallback("NEEDY");
-    let moods           = get_env_with_fallback("MOODS", "chill");
+    let pronouns = get_env_with_fallback("PRONOUNS", "her");
+    let roles = get_env_with_fallback("ROLES", &detect_role_from_binary());
+    let little = get_env_with_fallback("LITTLE", "girl");
+    let emotes = get_env_with_fallback("EMOTES", "💖/💗/💓/💞");
+    let color = get_env_with_fallback("COLOR", "white");
+    let style = get_env_with_fallback("STYLE", "bold");
+    let color_rgb = get_env_optional_with_fallback("COLOR_RGB");
+    let aliases = get_env_optional_with_fallback("ALIASES");
+    let affirmations = get_env_optional_with_fallback("AFFIRMATIONS");
+    let needy = get_env_bool_with_fallback("NEEDY");
+    let moods = get_env_with_fallback("MOODS", "chill");
 
     // Special handling for ONLY_NEGATIVE (uses SHELL_MOMMY prefix, not SHELL_MOMMYS)
     let only_negative = env::var("SHELL_MOMMY_ONLY_NEGATIVE").is_ok_and(|v| v == "1")
@@ -172,8 +159,8 @@ pub fn load_config() -> ConfigMommy {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::env;
     use serial_test::serial;
+    use std::env;
 
     // Helper to clear all config‐related env vars.
     fn clear_all() {
@@ -191,9 +178,11 @@ mod tests {
             "SHELL_MOMMY_ONLY_NEGATIVE",
             "SHELL_MOMMYS_MOODS",
         ];
-        for k in &keys { unsafe {
-            env::remove_var(k);
-        } }
+        for k in &keys {
+            unsafe {
+                env::remove_var(k);
+            }
+        }
     }
 
     #[test]
@@ -238,7 +227,11 @@ mod tests {
         assert_eq!(config.roles, "daddy");
         assert_eq!(config.color_rgb, Some("255,255,255".to_string()));
         assert!(config.needy, "expected 1, got {:#?}", config.needy);
-        assert!(config.only_negative, "expected 1, got {:#?}", config.only_negative);
+        assert!(
+            config.only_negative,
+            "expected 1, got {:#?}",
+            config.only_negative
+        );
         assert_eq!(config.moods, "ominous/thirsty");
     }
 
