@@ -1,9 +1,9 @@
 [package]
 name = "shell-mommy"
-version = "0.1.4"
+version = "0.1.5"
 authors = ["Mincy Queen <sleepymincy@proton.me>"]
 edition = "2024"
-description = "Affirmations in your terminal!"
+description = "Affirmations in your terminal! Now with cargo-mommy compatibility!"
 license = "Unlicense"
 repository = "https://github.com/sleepymincy/mommy"
 keywords = ["mommy", "silly", "shell", "cli"]
@@ -12,7 +12,15 @@ readme = "README.md"
 
 [[bin]]
 name = "mommy"
-path = "src/main.rs" 
+path = "src/main.rs"
+
+[[bin]]
+name = "cargo-mommy"
+path = "src/main.rs"
+
+[features]
+default = []
+beg = []
 
 [dependencies]
 fastrand = "2.3.0"
