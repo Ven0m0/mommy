@@ -39,8 +39,8 @@ echo ""
 
 echo "Test 7: Multiple moods rotation (5 samples)"
 for i in {1..5}; do
-    echo "  Sample $i:"
-    SHELL_MOMMYS_NEEDY=1 SHELL_MOMMYS_MOODS="chill/ominous/thirsty" "$MOMMY" 0
+  echo "  Sample $i:"
+  SHELL_MOMMYS_NEEDY=1 SHELL_MOMMYS_MOODS="chill/ominous/thirsty" "$MOMMY" 0
 done
 echo ""
 
