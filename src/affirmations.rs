@@ -80,7 +80,6 @@ pub fn load_custom_affirmations_with_mood<P: AsRef<Path>>(path: P, mood: &str) -
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::collections::HashSet;
 
     #[test]
     fn test_embedded_affirmations_some() {
@@ -99,8 +98,7 @@ mod tests {
         assert!(!affirmations.negative.is_empty(), "expected at least one negative affirmation");
 
         // Expect: one specific affirmation from the ../assets/affirmations.json
-        let positives: HashSet<_> = affirmations.positive.iter().collect();
-        assert!(positives.contains(&"*boops your nose* {emotes}".to_string()));
+        assert!(affirmations.positive.contains(&"*boops your nose* {emotes}".to_string()));
     }
 
     #[test]
@@ -130,8 +128,7 @@ mod tests {
         assert!(!affirmations.negative.is_empty(), "expected at least one negative affirmation in ominous");
 
         // Expect: ominous-specific content
-        let positives: HashSet<_> = affirmations.positive.iter().collect();
-        assert!(positives.iter().any(|s| s.contains("aeons") || s.contains("feared")), 
+        assert!(affirmations.positive.iter().any(|s| s.contains("aeons") || s.contains("feared")), 
                 "expected ominous-themed positive affirmations");
     }
 
