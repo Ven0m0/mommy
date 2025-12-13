@@ -1,11 +1,10 @@
 use std::env;
 use std::process::{Command, exit};
 use crate::config::load_config;
-use crate::utils::{fill_template, graceful_print};
-use crate::affirmations::{load_affirmations, load_custom_affirmations, Affirmations};
+use crate::utils::{fill_template, graceful_print, random_string_pick};
+use crate::affirmations::{load_affirmations_with_mood, load_custom_affirmations_with_mood, Affirmations};
 use crate::color::random_style_pick;
 
-// https://en.wikipedia.org/wiki/Don't_repeat_yourself
 fn choose_template<'a>( json_template: Option<&'a Vec<String>>, default_template: &'a Vec<String> ) -> &'a str {
     let templates = json_template.unwrap_or(default_template);
     let idx = fastrand::usize(..templates.len());
@@ -14,7 +13,15 @@ fn choose_template<'a>( json_template: Option<&'a Vec<String>>, default_template
 
 pub fn mommy() -> Result<i32, Box<dyn std::error::Error>> {
     let config = load_config();
-    let affirmations: Option<Affirmations> = if let Some(ref path) = config.affirmations { load_custom_affirmations(path) } else { load_affirmations() };
+    
+    let selected_mood = random_string_pick(&config.moods).unwrap_or_else(|| "chill".to_string());
+    
+    let affirmations: Option<Affirmations> = if let Some(ref path) = config.affirmations {
+        load_custom_affirmations_with_mood(path, &selected_mood)
+    } else {
+        load_affirmations_with_mood(&selected_mood)
+    };
+    
     let affirmations_error: Vec<String> = vec![ "{roles} failed to load any affirmations, {little}~ {emotes}".to_string() ];
 
     let args: Vec<String> = env::args().collect();

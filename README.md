@@ -30,6 +30,7 @@ Available environment variables:
 - `SHELL_MOMMYS_LITTLE` - to set the petnames mommy is using towards u
 - `SHELL_MOMMYS_ROLES` - to change mommy to daddy or whatever else
 - `SHELL_MOMMYS_PRONOUNS` - to change mommy's pronouns
+- `SHELL_MOMMYS_MOODS` - picks the set of possible responses (default: "chill", possible values: "chill", "ominous", "thirsty")
 - `SHELL_MOMMYS_COLOR` - to change text color
 - `SHELL_MOMMYS_STYLE` - to change text style
 - `SHELL_MOMMYS_COLOR_RGB` - to set custom rgb color for the text
@@ -92,6 +93,38 @@ export PS1="\$(mommy \$?)$PS1"
 ```
 
 You can also change `affirmations.json` before building, or load your own with `SHELL_MOMMYS_AFFIRMATIONS` during runtime, to un-degenerate this piece of software or make it worse. I'm not the one to judge.
+
+### Moods System (Advanced Responses)
+
+Mommy now supports different moods that change the style and tone of her responses! You can set this with the `SHELL_MOMMYS_MOODS` environment variable.
+
+Available moods:
+- **chill** (default): The classic mommy experience with sweet and supportive messages
+- **ominous**: A darker, more foreboding tone with references to cosmic horror and ancient powers
+- **thirsty**: More flirtatious and playful responses (slightly spicy! 🌶️)
+
+You can specify multiple moods separated by `/`, and mommy will randomly pick one each time:
+
+```bash
+export SHELL_MOMMYS_MOODS="chill"           # Always use chill mood
+export SHELL_MOMMYS_MOODS="chill/ominous"   # Randomly alternate between chill and ominous
+export SHELL_MOMMYS_MOODS="ominous"         # Always use ominous mood
+```
+
+Example usage:
+```bash
+# Try the ominous mood
+SHELL_MOMMYS_MOODS="ominous" mommy ls
+# Might output: "What you have set in motion today will be remembered for aeons to come! 💞"
+
+# Mix multiple moods
+SHELL_MOMMYS_MOODS="chill/ominous/thirsty" mommy echo "hello"
+# Output will randomly be from any of the three moods
+```
+
+**Custom Affirmations with Moods:**
+
+If you're using a custom affirmations file via `SHELL_MOMMYS_AFFIRMATIONS`, you can now structure it with moods! See [assets/affirmations.json](https://github.com/sleepymincy/mommy/blob/master/assets/affirmations.json) for the format. Your custom file should include a `moods` object with mood names as keys, each containing `positive` and `negative` arrays. For backward compatibility, top-level `positive` and `negative` arrays are still supported and used as fallback.
 
 ## Known bugs / limitations:
 - No known ones, but I'm sure there are. Open up an [issue](https://github.com/sleepymincy/mommy/issues/new) if you find one.

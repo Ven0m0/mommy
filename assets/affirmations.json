@@ -1,5 +1,95 @@
 {
+  "moods": {
+    "chill": {
+      "positive": [
+        "*pets your head* {emotes}",
+        "*gives you scritches* {emotes}",
+        "you're such a smart cookie~ {emotes}",
+        "that's a good {little}~ {emotes}",
+        "{roles} thinks {pronouns} {little} earned a big hug~ {emotes}",
+        "good {little}~\n{roles}'s so proud of you~ {emotes}",
+        "aww, what a good {little}~\n{roles} knew you could do it~ {emotes}",
+        "you did it~! {emotes}",
+        "{roles} loves you~ {emotes}",
+        "*gives you a sticker* {emotes}",
+        "*boops your nose* {emotes}",
+        "*wraps you in a big hug* {emotes}",
+        "well done~!\n{roles} is so happy for you~ {emotes}",
+        "what a good {little} you are~ {emotes}",
+        "that's {roles}'s clever little {little}~ {emotes}",
+        "you're doing so well~! {emotes}",
+        "you're making {roles} so happy~ {emotes}",
+        "{roles} loves {pronouns} cute little {little}~ {emotes}"
+      ],
+      "negative": [
+        "{roles} believes in you~ {emotes}",
+        "don't forget to hydrate~ {emotes}",
+        "aww, you'll get it next time~ {emotes}",
+        "do you need {roles}'s help~? {emotes}",
+        "everything's gonna be ok~ {emotes}",
+        "{roles} still loves you no matter what~ {emotes}",
+        "oh no did {roles}'s little {little} make a big mess~? {emotes}",
+        "{roles} knows {pronouns} little {little} can do better~ {emotes}",
+        "{roles} still loves you~ {emotes}",
+        "{roles} thinks {pronouns} little {little} is getting close~ {emotes}",
+        "it's ok, {roles}'s here for you~ {emotes}",
+        "oh, darling, you're almost there~ {emotes}",
+        "does {roles}'s little {little} need a bit of a break~? {emotes}",
+        "oops~! {roles} loves you anyways~ {emotes}",
+        "try again for {roles}, {little}~ {emotes}",
+        "don't worry, {roles} knows you can do it~ {emotes}"
+      ]
+    },
+    "ominous": {
+      "positive": [
+        "What you have set in motion today will be remembered for aeons to come! {emotes}",
+        "{roles} will see to it that {pronouns} little {little}'s name is feared~ {emotes}",
+        "{roles} is proud of the evil seed {pronouns} {little} has planted into this accursed world {emotes}",
+        "You've surpassed all of {roles}'s expectations, devoted {little} {emotes}",
+        "The deeds wrought by {roles}'s {little} will bring the faithless to their knees {emotes}",
+        "Under {roles}'s guidance, {pronouns} little {little} will shake the world {emotes}",
+        "You have made {roles} proud. ...for now {emotes}"
+      ],
+      "negative": [
+        "Ah, failure? {roles} will make sure the stars are right next time {emotes}",
+        "Does {roles}'s little {little} need more time for worship~? {emotes}",
+        "May the mark of the beast stain your flesh forever, {roles} will haunt your soul forevermore {emotes}",
+        "Is {roles}'s chastising not enough? {emotes}",
+        "Oh {little}... everything is falling apart~ {emotes}",
+        "{roles} has seen worse. {pronouns} devoted {little} can fix it. ...probably {emotes}",
+        "{roles} expected better from you. do not disappoint {pronouns} again {emotes}",
+        "It seems {roles}'s {little} is becoming careless {emotes}",
+        "{little}, you are tarnishing the reputation of this house {emotes}"
+      ]
+    },
+    "thirsty": {
+      "positive": [
+        "*tugs your leash*\nthat's a VERY good {little}~ {emotes}",
+        "*runs {pronouns} fingers through your hair* good {little}~ keep going~ {emotes}",
+        "*smooches your forehead*\ngood job~ {emotes}",
+        "*nibbles on your ear*\nthat's right~\nkeep going~ {emotes}",
+        "*pats your butt*\nthat's a good {little}~ {emotes}",
+        "*drags {pronouns} nail along your cheek*\nsuch a good {little}~ {emotes}",
+        "*bites {pronouns} lip*\nmhmm~ {emotes}",
+        "give {roles} a kiss~ {emotes}",
+        "*heavy breathing against your neck* {emotes}"
+      ],
+      "negative": [
+        "you're so cute when you're flustered~ {emotes}",
+        "do you think you're going to get a reward from {roles} like that~? {emotes}",
+        "*grabs your hair and pulls your head back*\nyou can do better than that for {roles} can't you~? {emotes}",
+        "if you don't learn how to code better, {roles} is going to put you in time-out~ {emotes}",
+        "does {roles} need to give {pronouns} little {little} some special lessons~? {emotes}",
+        "you need to work harder to please {roles}~ {emotes}",
+        "gosh you must be flustered~ {emotes}",
+        "are you just keysmashing now~?\ncute~ {emotes}",
+        "is {roles}'s little {little} having trouble reaching the keyboard~? {emotes}"
+      ]
+    }
+  },
   "positive": [
+    "*pets your head* {emotes}",
+    "*gives you scritches* {emotes}",
     "you're such a smart cookie~ {emotes}",
     "that's a good {little}~ {emotes}",
     "{roles} thinks {pronouns} {little} earned a big hug~ {emotes}",
@@ -15,16 +105,7 @@
     "that's {roles}'s clever little {little}~ {emotes}",
     "you're doing so well~! {emotes}",
     "you're making {roles} so happy~ {emotes}",
-    "{roles} loves {pronouns} cute little {little}~ {emotes}",
-    "*tugs your leash*\nthat's a VERY good {little}~ {emotes}",
-    "*runs {pronouns} fingers through your hair* good {little}~ keep going~ {emotes}",
-    "*smooches your forehead*\ngood job~ {emotes}",
-    "*nibbles on your ear*\nthat's right~\nkeep going~ {emotes}",
-    "*pats your butt*\nthat's a good {little}~ {emotes}",
-    "*drags {pronouns} nail along your cheek*\nsuch a good {little}~ {emotes}",
-    "*bites {pronouns} lip*\nmhmm~ {emotes}",
-    "give {roles} a kiss~ {emotes}",
-    "*heavy breathing against your neck* {emotes}"
+    "{roles} loves {pronouns} cute little {little}~ {emotes}"
   ],
   "negative": [
     "{roles} believes in you~ {emotes}",
@@ -42,15 +123,6 @@
     "does {roles}'s little {little} need a bit of a break~? {emotes}",
     "oops~! {roles} loves you anyways~ {emotes}",
     "try again for {roles}, {little}~ {emotes}",
-    "don't worry, {roles} knows you can do it~ {emotes}",
-    "you're so cute when you're flustered~ {emotes}",
-    "do you think you're going to get a reward from {roles} like that~? {emotes}",
-    "*grabs your hair and pulls your head back*\nyou can do better than that for {roles} can't you~? {emotes}",
-    "if you don't learn how to code better, {roles} is going to put you in time-out~ {emotes}",
-    "does {roles} need to give {pronouns} little {little} some special lessons~? {emotes}",
-    "you need to work harder to please {roles}~ {emotes}",
-    "gosh you must be flustered~ {emotes}",
-    "are you just keysmashing now~?\ncute~ {emotes}",
-    "is {roles}'s little {little} having trouble reaching the keyboard~? {emotes}"
+    "don't worry, {roles} knows you can do it~ {emotes}"
   ]
 }
