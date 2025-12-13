@@ -115,7 +115,7 @@ mod tests {
     #[test]
     fn load_custom_affirmations_missing_file() {
         let path = "/nonexistent/path/to/file";
-        let aff = load_custom_affirmations_with_mood(&path, "chill");
+        let aff = load_custom_affirmations_with_mood(path, "chill");
 
         // Expect: None for nonexistent path
         assert!(aff.is_none(), "expected None for bad path, got {:#?}", aff);

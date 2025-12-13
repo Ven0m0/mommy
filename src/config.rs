@@ -26,8 +26,8 @@ pub fn load_config() -> ConfigMommy {
     let color_rgb       = env::var("SHELL_MOMMYS_COLOR_RGB").ok();
     let aliases         = env::var("SHELL_MOMMYS_ALIASES").ok();
     let affirmations    = env::var("SHELL_MOMMYS_AFFIRMATIONS").ok();
-    let needy           = env::var("SHELL_MOMMYS_NEEDY").map_or(false, |v| v == "1");
-    let only_negative   = env::var("SHELL_MOMMY_ONLY_NEGATIVE").map_or(false, |v| v == "1");
+    let needy           = env::var("SHELL_MOMMYS_NEEDY").is_ok_and(|v| v == "1");
+    let only_negative   = env::var("SHELL_MOMMY_ONLY_NEGATIVE").is_ok_and(|v| v == "1");
     let moods           = env::var("SHELL_MOMMYS_MOODS").unwrap_or_else(|_| "chill".to_string());
 
     ConfigMommy {
