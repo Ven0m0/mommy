@@ -4,10 +4,10 @@
 	dh $@
 
 override_dh_auto_build:
-	cargo build --release --all-features
+	cargo build -r --all-features
 
 override_dh_auto_test:
-	cargo test --release --all-features
+	cargo test -r --all-features
 
 override_dh_auto_install:
 	install -Dm755 target/release/mommy debian/shell-mommy/usr/bin/mommy
