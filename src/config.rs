@@ -13,6 +13,7 @@ pub struct ConfigMommy {
     pub affirmations: Option<String>,
     pub needy: bool,
     pub only_negative: bool,
+    pub moods: String,
 }
 
 pub fn load_config() -> ConfigMommy {
@@ -27,6 +28,7 @@ pub fn load_config() -> ConfigMommy {
     let affirmations    = env::var("SHELL_MOMMYS_AFFIRMATIONS").ok();
     let needy           = env::var("SHELL_MOMMYS_NEEDY").map_or(false, |v| v == "1");
     let only_negative   = env::var("SHELL_MOMMY_ONLY_NEGATIVE").map_or(false, |v| v == "1");
+    let moods           = env::var("SHELL_MOMMYS_MOODS").unwrap_or_else(|_| "chill".to_string());
 
     ConfigMommy {
         pronouns,
@@ -40,6 +42,7 @@ pub fn load_config() -> ConfigMommy {
         affirmations,
         needy,
         only_negative,
+        moods,
     }
 }
 
@@ -63,6 +66,7 @@ mod tests {
             "SHELL_MOMMYS_AFFIRMATIONS",
             "SHELL_MOMMYS_NEEDY",
             "SHELL_MOMMY_ONLY_NEGATIVE",
+            "SHELL_MOMMYS_MOODS",
         ];
         for k in &keys { unsafe {
             env::remove_var(k);
@@ -87,6 +91,7 @@ mod tests {
         assert_eq!(config.affirmations, None);
         assert!(!config.needy);
         assert!(!config.only_negative);
+        assert_eq!(config.moods, "chill");
     }
 
     #[test]
@@ -99,14 +104,16 @@ mod tests {
             env::set_var("SHELL_MOMMYS_COLOR_RGB", "255,255,255");
             env::set_var("SHELL_MOMMYS_NEEDY", "1");
             env::set_var("SHELL_MOMMY_ONLY_NEGATIVE", "1");
+            env::set_var("SHELL_MOMMYS_MOODS", "ominous/thirsty");
         }
         let config = load_config();
 
-        // Expect: pronouns: his; role: daddy; color_rgb: 255,255,255; needy: 1; only_negative: 1
+        // Expect: pronouns: his; role: daddy; color_rgb: 255,255,255; needy: 1; only_negative: 1; moods: ominous/thirsty
         assert_eq!(config.pronouns, "his");
         assert_eq!(config.roles, "daddy");
         assert_eq!(config.color_rgb, Some("255,255,255".to_string()));
         assert!(config.needy, "expected 1, got {:#?}", config.needy);
         assert!(config.only_negative, "expected 1, got {:#?}", config.only_negative);
+        assert_eq!(config.moods, "ominous/thirsty");
     }
 }
