@@ -106,7 +106,7 @@ mod tests {
         assert!(!affirmations.negative.is_empty(), "expected at least one negative affirmation");
 
         // Expect: one specific affirmation from the ../assets/affirmations.json
-        assert!(affirmations.positive.contains(&"*boops your nose* {emotes}".to_string()));
+        assert!(affirmations.positive.iter().any(|s| s == "*boops your nose* {emotes}"));
     }
 
     #[test]
@@ -114,8 +114,8 @@ mod tests {
         let aff = load_affirmations_with_mood("chill").unwrap();
 
         // Expect: one valid positive and negative affirmations
-        assert!(aff.positive.contains(&"you're such a smart cookie~ {emotes}".to_string()));
-        assert!(aff.negative.contains(&"{roles} believes in you~ {emotes}".to_string()));
+        assert!(aff.positive.iter().any(|s| s == "you're such a smart cookie~ {emotes}"));
+        assert!(aff.negative.iter().any(|s| s == "{roles} believes in you~ {emotes}"));
     }
 
     #[test]
