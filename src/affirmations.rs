@@ -23,6 +23,12 @@ pub struct Affirmations {
     pub negative: Vec<String>,
 }
 
+fn parse_affirmations(json_str: &str, mood: Option<&str>) -> Option<Affirmations> {
+    let file: AffirmationsFile = serde_json::from_str(json_str).ok()?;
+
+    Some(affirmations_from_file(file, mood))
+}
+
 fn affirmations_from_file(mut file: AffirmationsFile, mood: Option<&str>) -> Affirmations {
     if let Some(mood) = mood {
         if let Some(mut mood_set) = file.moods.remove(mood) {
@@ -45,16 +51,11 @@ fn affirmations_from_file(mut file: AffirmationsFile, mood: Option<&str>) -> Aff
 /// For new code, prefer `load_affirmations_with_mood` which supports mood selection.
 #[allow(dead_code)]
 pub fn load_affirmations() -> Option<Affirmations> {
-    let json_str = include_str!("../assets/affirmations.json");
-    let file: AffirmationsFile = serde_json::from_str(json_str).ok()?;
-    Some(affirmations_from_file(file, None))
+    parse_affirmations(include_str!("../assets/affirmations.json"), None)
 }
 
 pub fn load_affirmations_with_mood(mood: &str) -> Option<Affirmations> {
-    let json_str = include_str!("../assets/affirmations.json");
-    let file: AffirmationsFile = serde_json::from_str(json_str).ok()?;
-
-    Some(affirmations_from_file(file, Some(mood)))
+    parse_affirmations(include_str!("../assets/affirmations.json"), Some(mood))
 }
 
 /// Loads custom affirmations from a file without mood support.
@@ -64,8 +65,7 @@ pub fn load_affirmations_with_mood(mood: &str) -> Option<Affirmations> {
 #[allow(dead_code)]
 pub fn load_custom_affirmations<P: AsRef<Path>>(path: P) -> Option<Affirmations> {
     let json_str = fs::read_to_string(&path).ok()?;
-    let file: AffirmationsFile = serde_json::from_str(&json_str).ok()?;
-    Some(affirmations_from_file(file, None))
+    parse_affirmations(&json_str, None)
 }
 
 pub fn load_custom_affirmations_with_mood<P: AsRef<Path>>(
@@ -73,9 +73,7 @@ pub fn load_custom_affirmations_with_mood<P: AsRef<Path>>(
     mood: &str,
 ) -> Option<Affirmations> {
     let json_str = fs::read_to_string(&path).ok()?;
-    let file: AffirmationsFile = serde_json::from_str(&json_str).ok()?;
-
-    Some(affirmations_from_file(file, Some(mood)))
+    parse_affirmations(&json_str, Some(mood))
 }
 
 #[cfg(test)]
