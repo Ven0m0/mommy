@@ -2,8 +2,8 @@ use crate::affirmations::{
     Affirmations, load_affirmations_with_mood, load_custom_affirmations_with_mood,
 };
 use crate::color::random_style_pick;
-use crate::config::{detect_role_from_binary, load_config};
-use crate::utils::{fill_template, graceful_print, random_string_pick};
+use crate::config::load_config;
+use crate::utils::{fill_template, graceful_print};
 use std::env;
 use std::process::{Command, exit};
 
@@ -11,11 +11,15 @@ const RECURSION_LIMIT: usize = 100;
 
 fn choose_template<'a>(
     json_template: Option<&'a Vec<String>>,
-    default_template: &'a Vec<String>,
+    default_template: &'a str,
 ) -> &'a str {
-    let templates = json_template.unwrap_or(default_template);
-    let idx = fastrand::usize(..templates.len());
-    templates[idx].as_str()
+    match json_template {
+        Some(templates) if !templates.is_empty() => {
+            let idx = fastrand::usize(..templates.len());
+            templates[idx].as_str()
+        }
+        _ => default_template,
+    }
 }
 
 /// Check if quiet mode is enabled from command line arguments
@@ -23,16 +27,14 @@ fn is_quiet_mode_enabled(args: &[String]) -> bool {
     args.iter().any(|arg| arg == "--quiet" || arg == "-q")
 }
 
-/// Check if we're running as a cargo subcommand
-fn is_cargo_subcommand() -> bool {
-    env::current_exe()
-        .ok()
-        .and_then(|path| {
-            path.file_name()
-                .and_then(|name| name.to_str())
-                .map(|name| name.starts_with("cargo-"))
-        })
-        .unwrap_or(false)
+/// Pick a random string from a pre-parsed Vec<String>
+fn random_vec_pick(vec: &[String]) -> Option<String> {
+    if vec.is_empty() {
+        None
+    } else {
+        let idx = fastrand::usize(..vec.len());
+        Some(vec[idx].clone())
+    }
 }
 
 /// Check if the command contains "i mean" for role transformation
@@ -48,15 +50,20 @@ fn check_role_transformation(args: &[String]) -> Option<String> {
 
 /// Perform role transformation by copying the binary
 #[cfg(unix)]
-fn perform_role_transformation(new_role: &str) -> Result<(), Box<dyn std::error::Error>> {
+fn perform_role_transformation(
+    new_role: &str,
+    binary_info: &crate::config::BinaryInfo,
+) -> Result<(), Box<dyn std::error::Error>> {
     use std::fs;
     use std::os::unix::fs::PermissionsExt;
 
-    let current_exe = env::current_exe()?;
-    let parent = current_exe.parent().ok_or("Cannot get parent directory")?;
+    let parent = binary_info
+        .path
+        .parent()
+        .ok_or("Cannot get parent directory")?;
 
     // Determine the new binary name
-    let new_name = if is_cargo_subcommand() {
+    let new_name = if binary_info.is_cargo_subcommand {
         format!("cargo-{}", new_role)
     } else {
         new_role.to_string()
@@ -65,7 +72,7 @@ fn perform_role_transformation(new_role: &str) -> Result<(), Box<dyn std::error:
     let new_path = parent.join(&new_name);
 
     // Copy the binary
-    fs::copy(&current_exe, &new_path)?;
+    fs::copy(&binary_info.path, &new_path)?;
 
     // Make it executable
     let mut perms = fs::metadata(&new_path)?.permissions();
@@ -79,14 +86,19 @@ fn perform_role_transformation(new_role: &str) -> Result<(), Box<dyn std::error:
 }
 
 #[cfg(not(unix))]
-fn perform_role_transformation(new_role: &str) -> Result<(), Box<dyn std::error::Error>> {
+fn perform_role_transformation(
+    new_role: &str,
+    binary_info: &crate::config::BinaryInfo,
+) -> Result<(), Box<dyn std::error::Error>> {
     use std::fs;
 
-    let current_exe = env::current_exe()?;
-    let parent = current_exe.parent().ok_or("Cannot get parent directory")?;
+    let parent = binary_info
+        .path
+        .parent()
+        .ok_or("Cannot get parent directory")?;
 
     // Determine the new binary name
-    let new_name = if is_cargo_subcommand() {
+    let new_name = if binary_info.is_cargo_subcommand {
         format!("cargo-{}.exe", new_role)
     } else {
         format!("{}.exe", new_role)
@@ -95,7 +107,7 @@ fn perform_role_transformation(new_role: &str) -> Result<(), Box<dyn std::error:
     let new_path = parent.join(&new_name);
 
     // Copy the binary
-    fs::copy(&current_exe, &new_path)?;
+    fs::copy(&binary_info.path, &new_path)?;
 
     println!("Created new binary: {}", new_path.display());
     println!("You can now use: {}", new_name);
@@ -105,7 +117,7 @@ fn perform_role_transformation(new_role: &str) -> Result<(), Box<dyn std::error:
 
 pub fn mommy() -> Result<i32, Box<dyn std::error::Error>> {
     let mut config = load_config();
-    let is_cargo_command = is_cargo_subcommand();
+    let is_cargo_command = config.binary_info.is_cargo_subcommand;
 
     // Check recursion limit
     if config.recursion_limit >= RECURSION_LIMIT {
@@ -113,7 +125,8 @@ pub fn mommy() -> Result<i32, Box<dyn std::error::Error>> {
         return Ok(2); // Special exit code for recursion overflow
     }
 
-    let selected_mood = random_string_pick(&config.moods).unwrap_or_else(|| "chill".to_string());
+    // Use pre-parsed moods vector
+    let selected_mood = random_vec_pick(&config.moods).unwrap_or_else(|| "chill".to_string());
 
     let affirmations: Option<Affirmations> = if let Some(ref path) = config.affirmations {
         load_custom_affirmations_with_mood(path, &selected_mood)
@@ -121,12 +134,13 @@ pub fn mommy() -> Result<i32, Box<dyn std::error::Error>> {
         load_affirmations_with_mood(&selected_mood)
     };
 
-    let affirmations_error: Vec<String> =
-        vec!["{roles} failed to load any affirmations, {little}~ {emotes}".to_string()];
+    // Use const str instead of Vec allocation
+    const AFFIRMATIONS_ERROR: &str =
+        "{roles} failed to load any affirmations, {little}~ {emotes}";
 
     let args: Vec<String> = env::args().collect();
     if args.len() < 2 {
-        let role = detect_role_from_binary();
+        let role = &config.binary_info.role;
         let usage = if is_cargo_command {
             format!("cargo {} <cargo-command> [args...]", role)
         } else if config.needy {
@@ -143,7 +157,7 @@ pub fn mommy() -> Result<i32, Box<dyn std::error::Error>> {
 
     // Check for role transformation
     if let Some(new_role) = check_role_transformation(&args) {
-        perform_role_transformation(&new_role)?;
+        perform_role_transformation(&new_role, &config.binary_info)?;
         return Ok(0);
     }
 
@@ -214,14 +228,14 @@ pub fn mommy() -> Result<i32, Box<dyn std::error::Error>> {
         (true, false) => (
             choose_template(
                 affirmations.as_ref().map(|aff| &aff.positive),
-                &affirmations_error,
+                AFFIRMATIONS_ERROR,
             ),
             "positive",
         ),
         (false, _) => (
             choose_template(
                 affirmations.as_ref().map(|aff| &aff.negative),
-                &affirmations_error,
+                AFFIRMATIONS_ERROR,
             ),
             "negative",
         ),
