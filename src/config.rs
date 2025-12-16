@@ -5,6 +5,7 @@ use std::path::PathBuf;
 #[derive(Debug, Clone)]
 pub struct BinaryInfo {
     pub path: PathBuf,
+    #[allow(dead_code)]
     pub name: String,
     pub role: String,
     pub is_cargo_subcommand: bool,
@@ -67,6 +68,7 @@ pub struct ConfigMommy {
 
 /// Detects the role from the binary name (e.g., "mommy", "daddy", "cargo-mommy", etc.)
 /// Deprecated: Use BinaryInfo::detect() instead for better performance
+#[allow(dead_code)]
 pub fn detect_role_from_binary() -> String {
     BinaryInfo::detect().role
 }
@@ -83,6 +85,7 @@ fn get_env_prefix_from_binary(binary_info: &BinaryInfo) -> String {
 
 /// Gets the environment variable prefix based on the detected role and binary name
 /// Deprecated: Use get_env_prefix_from_binary with BinaryInfo for better performance
+#[allow(dead_code)]
 pub fn get_env_prefix() -> String {
     let binary_info = BinaryInfo::detect();
     get_env_prefix_from_binary(&binary_info)
