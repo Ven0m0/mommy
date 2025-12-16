@@ -105,6 +105,7 @@ fn perform_role_transformation(new_role: &str) -> Result<(), Box<dyn std::error:
 
 pub fn mommy() -> Result<i32, Box<dyn std::error::Error>> {
     let mut config = load_config();
+    let is_cargo_command = is_cargo_subcommand();
 
     // Check recursion limit
     if config.recursion_limit >= RECURSION_LIMIT {
@@ -126,7 +127,7 @@ pub fn mommy() -> Result<i32, Box<dyn std::error::Error>> {
     let args: Vec<String> = env::args().collect();
     if args.len() < 2 {
         let role = detect_role_from_binary();
-        let usage = if is_cargo_subcommand() {
+        let usage = if is_cargo_command {
             format!("cargo {} <cargo-command> [args...]", role)
         } else if config.needy {
             format!("{} <exit_code>", args[0])
@@ -150,7 +151,7 @@ pub fn mommy() -> Result<i32, Box<dyn std::error::Error>> {
     let mut command_args = &args[1..];
 
     // If running as cargo subcommand, skip "cargo" if it's the first arg
-    if is_cargo_subcommand() && !command_args.is_empty() && command_args[0] == "cargo" {
+    if is_cargo_command && !command_args.is_empty() && command_args[0] == "cargo" {
         command_args = &command_args[1..];
     }
 
@@ -171,7 +172,7 @@ pub fn mommy() -> Result<i32, Box<dyn std::error::Error>> {
 
     let exit_code: i32 = if config.needy {
         filtered_args.first().ok_or("Missing exit code")?.parse()?
-    } else if is_cargo_subcommand() {
+    } else if is_cargo_command {
         // Running as cargo subcommand - execute cargo with the provided args
         if filtered_args.is_empty() {
             eprintln!("No cargo command provided");
@@ -217,14 +218,7 @@ pub fn mommy() -> Result<i32, Box<dyn std::error::Error>> {
             ),
             "positive",
         ),
-        (false, true) => (
-            choose_template(
-                affirmations.as_ref().map(|aff| &aff.negative),
-                &affirmations_error,
-            ),
-            "negative",
-        ),
-        (false, false) => (
+        (false, _) => (
             choose_template(
                 affirmations.as_ref().map(|aff| &aff.negative),
                 &affirmations_error,

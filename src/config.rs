@@ -61,26 +61,7 @@ pub fn get_env_prefix() -> String {
 }
 
 /// Helper to get env var with fallback to both prefixes
-fn get_env_with_fallback(suffix: &str, default: &str) -> String {
-    let prefix = get_env_prefix();
-    let primary_key = format!("{}_{}", prefix, suffix);
-
-    // Try primary key first (CARGO_MOMMYS_* or SHELL_MOMMYS_*)
-    env::var(&primary_key)
-        .or_else(|_| {
-            // Fallback to SHELL_MOMMYS_* if we're using CARGO prefix
-            if prefix.starts_with("CARGO_") {
-                env::var(format!("SHELL_MOMMYS_{}", suffix))
-            } else {
-                Err(env::VarError::NotPresent)
-            }
-        })
-        .unwrap_or_else(|_| default.to_string())
-}
-
-/// Helper to get optional env var with fallback
-fn get_env_optional_with_fallback(suffix: &str) -> Option<String> {
-    let prefix = get_env_prefix();
+fn env_with_fallback(prefix: &str, suffix: &str) -> Option<String> {
     let primary_key = format!("{}_{}", prefix, suffix);
 
     env::var(&primary_key)
@@ -95,35 +76,20 @@ fn get_env_optional_with_fallback(suffix: &str) -> Option<String> {
         .ok()
 }
 
-/// Helper to check boolean env var with fallback
-fn get_env_bool_with_fallback(suffix: &str) -> bool {
-    let prefix = get_env_prefix();
-    let primary_key = format!("{}_{}", prefix, suffix);
-
-    env::var(&primary_key)
-        .or_else(|_| {
-            // Fallback to SHELL_MOMMYS_* if we're using CARGO prefix
-            if prefix.starts_with("CARGO_") {
-                env::var(format!("SHELL_MOMMYS_{}", suffix))
-            } else {
-                Err(env::VarError::NotPresent)
-            }
-        })
-        .is_ok_and(|v| v == "1")
-}
-
 pub fn load_config() -> ConfigMommy {
-    let pronouns = get_env_with_fallback("PRONOUNS", "her");
-    let roles = get_env_with_fallback("ROLES", &detect_role_from_binary());
-    let little = get_env_with_fallback("LITTLE", "girl");
-    let emotes = get_env_with_fallback("EMOTES", "💖/💗/💓/💞");
-    let color = get_env_with_fallback("COLOR", "white");
-    let style = get_env_with_fallback("STYLE", "bold");
-    let color_rgb = get_env_optional_with_fallback("COLOR_RGB");
-    let aliases = get_env_optional_with_fallback("ALIASES");
-    let affirmations = get_env_optional_with_fallback("AFFIRMATIONS");
-    let needy = get_env_bool_with_fallback("NEEDY");
-    let moods = get_env_with_fallback("MOODS", "chill");
+    let env_prefix = get_env_prefix();
+    let pronouns = env_with_fallback(&env_prefix, "PRONOUNS").unwrap_or_else(|| "her".to_string());
+    let roles = env_with_fallback(&env_prefix, "ROLES").unwrap_or_else(detect_role_from_binary);
+    let little = env_with_fallback(&env_prefix, "LITTLE").unwrap_or_else(|| "girl".to_string());
+    let emotes =
+        env_with_fallback(&env_prefix, "EMOTES").unwrap_or_else(|| "💖/💗/💓/💞".to_string());
+    let color = env_with_fallback(&env_prefix, "COLOR").unwrap_or_else(|| "white".to_string());
+    let style = env_with_fallback(&env_prefix, "STYLE").unwrap_or_else(|| "bold".to_string());
+    let color_rgb = env_with_fallback(&env_prefix, "COLOR_RGB");
+    let aliases = env_with_fallback(&env_prefix, "ALIASES");
+    let affirmations = env_with_fallback(&env_prefix, "AFFIRMATIONS");
+    let needy = env_with_fallback(&env_prefix, "NEEDY").is_some_and(|v| v == "1");
+    let moods = env_with_fallback(&env_prefix, "MOODS").unwrap_or_else(|| "chill".to_string());
 
     // Special handling for ONLY_NEGATIVE (uses SHELL_MOMMY prefix, not SHELL_MOMMYS)
     let only_negative = env::var("SHELL_MOMMY_ONLY_NEGATIVE").is_ok_and(|v| v == "1")
@@ -177,12 +143,49 @@ mod tests {
             "SHELL_MOMMYS_NEEDY",
             "SHELL_MOMMY_ONLY_NEGATIVE",
             "SHELL_MOMMYS_MOODS",
+            "CARGO_MOMMYS_PRONOUNS",
+            "CARGO_MOMMYS_ROLES",
+            "CARGO_MOMMYS_LITTLE",
+            "CARGO_MOMMYS_EMOTES",
+            "CARGO_MOMMYS_COLOR",
+            "CARGO_MOMMYS_STYLE",
+            "CARGO_MOMMYS_COLOR_RGB",
+            "CARGO_MOMMYS_ALIASES",
+            "CARGO_MOMMYS_AFFIRMATIONS",
+            "CARGO_MOMMYS_NEEDY",
+            "CARGO_MOMMYS_MOODS",
+            "CARGO_MOMMY_ONLY_NEGATIVE",
         ];
         for k in &keys {
             unsafe {
                 env::remove_var(k);
             }
         }
+    }
+
+    #[test]
+    #[serial]
+    fn test_env_with_fallback_prefers_primary_key() {
+        clear_all();
+        unsafe {
+            env::set_var("CARGO_MOMMYS_PRONOUNS", "their");
+            env::set_var("SHELL_MOMMYS_PRONOUNS", "her");
+        }
+
+        let value = env_with_fallback("CARGO_MOMMYS", "PRONOUNS");
+        assert_eq!(value.as_deref(), Some("their"));
+    }
+
+    #[test]
+    #[serial]
+    fn test_env_with_fallback_uses_shell_backup() {
+        clear_all();
+        unsafe {
+            env::set_var("SHELL_MOMMYS_PRONOUNS", "hers");
+        }
+
+        let value = env_with_fallback("CARGO_MOMMYS", "PRONOUNS");
+        assert_eq!(value.as_deref(), Some("hers"));
     }
 
     #[test]
