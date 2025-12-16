@@ -1,63 +1,91 @@
 use std::env;
+use std::path::PathBuf;
+
+/// Cached binary information to avoid redundant filesystem calls
+#[derive(Debug, Clone)]
+pub struct BinaryInfo {
+    pub path: PathBuf,
+    pub name: String,
+    pub role: String,
+    pub is_cargo_subcommand: bool,
+}
+
+impl BinaryInfo {
+    pub fn detect() -> Self {
+        let path = env::current_exe().unwrap_or_else(|_| PathBuf::from("mommy"));
+        let name = path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("mommy")
+            .to_string();
+
+        let is_cargo_subcommand = name.starts_with("cargo-");
+
+        // Handle both "cargo-mommy", "cargo-daddy" and plain "mommy", "daddy"
+        let stripped = name.strip_prefix("cargo-").unwrap_or(&name);
+        let role = if stripped.contains("daddy") {
+            "daddy".to_string()
+        } else {
+            "mommy".to_string()
+        };
+
+        BinaryInfo {
+            path,
+            name,
+            role,
+            is_cargo_subcommand,
+        }
+    }
+}
 
 #[derive(Debug)]
 pub struct ConfigMommy {
-    pub pronouns: String,
-    pub roles: String,
-    pub little: String,
-    pub emotes: String,
-    pub color: String,
-    pub style: String,
-    pub color_rgb: Option<String>,
+    // Pre-parsed string options for efficient random selection
+    pub pronouns: Vec<String>,
+    pub roles: Vec<String>,
+    pub little: Vec<String>,
+    pub emotes: Vec<String>,
+    pub moods: Vec<String>,
+
+    // Pre-parsed color options
+    pub colors: Vec<String>,
+    pub color_rgb: Option<Vec<String>>,
+
+    // Pre-parsed style combinations
+    pub styles: Vec<String>,
+
     pub aliases: Option<String>,
     pub affirmations: Option<String>,
     pub needy: bool,
     pub only_negative: bool,
-    pub moods: String,
     pub quiet: bool,
     pub recursion_limit: usize,
+
+    // Cached binary info
+    pub binary_info: BinaryInfo,
 }
 
 /// Detects the role from the binary name (e.g., "mommy", "daddy", "cargo-mommy", etc.)
+/// Deprecated: Use BinaryInfo::detect() instead for better performance
 pub fn detect_role_from_binary() -> String {
-    env::current_exe()
-        .ok()
-        .and_then(|path| {
-            path.file_name().and_then(|name| name.to_str()).map(|name| {
-                // Handle both "cargo-mommy", "cargo-daddy" and plain "mommy", "daddy"
-                let name = name.strip_prefix("cargo-").unwrap_or(name);
-                // Extract role name (mommy, daddy, etc.)
-                if name.contains("daddy") {
-                    "daddy".to_string()
-                } else {
-                    // Default to mommy
-                    "mommy".to_string()
-                }
-            })
-        })
-        .unwrap_or_else(|| "mommy".to_string())
+    BinaryInfo::detect().role
+}
+
+/// Gets the environment variable prefix based on the binary info
+fn get_env_prefix_from_binary(binary_info: &BinaryInfo) -> String {
+    if binary_info.is_cargo_subcommand {
+        let role = binary_info.role.to_uppercase();
+        format!("CARGO_{}S", role)
+    } else {
+        "SHELL_MOMMYS".to_string()
+    }
 }
 
 /// Gets the environment variable prefix based on the detected role and binary name
+/// Deprecated: Use get_env_prefix_from_binary with BinaryInfo for better performance
 pub fn get_env_prefix() -> String {
-    let binary_name = env::current_exe()
-        .ok()
-        .and_then(|path| {
-            path.file_name()
-                .and_then(|name| name.to_str())
-                .map(|s| s.to_string())
-        })
-        .unwrap_or_else(|| "mommy".to_string());
-
-    // Check if we're running as a cargo subcommand
-    if binary_name.starts_with("cargo-") {
-        // Extract the role (mommy, daddy, etc.) from binary name
-        let role = detect_role_from_binary().to_uppercase();
-        format!("CARGO_{}S", role)
-    } else {
-        // Default to SHELL_MOMMYS for backward compatibility
-        "SHELL_MOMMYS".to_string()
-    }
+    let binary_info = BinaryInfo::detect();
+    get_env_prefix_from_binary(&binary_info)
 }
 
 /// Helper to get env var with fallback to both prefixes
@@ -76,20 +104,46 @@ fn env_with_fallback(prefix: &str, suffix: &str) -> Option<String> {
         .ok()
 }
 
+/// Parse a slash-separated string into a Vec<String>
+/// Trims and lowercases each token, filters empty ones
+fn parse_config_string(s: &str) -> Vec<String> {
+    s.split('/')
+        .map(|token| token.trim().to_lowercase())
+        .filter(|token| !token.is_empty())
+        .collect()
+}
+
 pub fn load_config() -> ConfigMommy {
-    let env_prefix = get_env_prefix();
-    let pronouns = env_with_fallback(&env_prefix, "PRONOUNS").unwrap_or_else(|| "her".to_string());
-    let roles = env_with_fallback(&env_prefix, "ROLES").unwrap_or_else(detect_role_from_binary);
-    let little = env_with_fallback(&env_prefix, "LITTLE").unwrap_or_else(|| "girl".to_string());
-    let emotes =
+    // Detect binary info once
+    let binary_info = BinaryInfo::detect();
+    let env_prefix = get_env_prefix_from_binary(&binary_info);
+
+    // Load raw config values
+    let pronouns_raw =
+        env_with_fallback(&env_prefix, "PRONOUNS").unwrap_or_else(|| "her".to_string());
+    let roles_raw =
+        env_with_fallback(&env_prefix, "ROLES").unwrap_or_else(|| binary_info.role.clone());
+    let little_raw = env_with_fallback(&env_prefix, "LITTLE").unwrap_or_else(|| "girl".to_string());
+    let emotes_raw =
         env_with_fallback(&env_prefix, "EMOTES").unwrap_or_else(|| "💖/💗/💓/💞".to_string());
-    let color = env_with_fallback(&env_prefix, "COLOR").unwrap_or_else(|| "white".to_string());
-    let style = env_with_fallback(&env_prefix, "STYLE").unwrap_or_else(|| "bold".to_string());
-    let color_rgb = env_with_fallback(&env_prefix, "COLOR_RGB");
+    let color_raw = env_with_fallback(&env_prefix, "COLOR").unwrap_or_else(|| "white".to_string());
+    let style_raw = env_with_fallback(&env_prefix, "STYLE").unwrap_or_else(|| "bold".to_string());
+    let color_rgb_raw = env_with_fallback(&env_prefix, "COLOR_RGB");
+    let moods_raw = env_with_fallback(&env_prefix, "MOODS").unwrap_or_else(|| "chill".to_string());
+
+    // Pre-parse all slash-separated config values
+    let pronouns = parse_config_string(&pronouns_raw);
+    let roles = parse_config_string(&roles_raw);
+    let little = parse_config_string(&little_raw);
+    let emotes = parse_config_string(&emotes_raw);
+    let moods = parse_config_string(&moods_raw);
+    let colors = parse_config_string(&color_raw);
+    let color_rgb = color_rgb_raw.map(|rgb| parse_config_string(&rgb));
+    let styles = parse_config_string(&style_raw);
+
     let aliases = env_with_fallback(&env_prefix, "ALIASES");
     let affirmations = env_with_fallback(&env_prefix, "AFFIRMATIONS");
     let needy = env_with_fallback(&env_prefix, "NEEDY").is_some_and(|v| v == "1");
-    let moods = env_with_fallback(&env_prefix, "MOODS").unwrap_or_else(|| "chill".to_string());
 
     // Special handling for ONLY_NEGATIVE (uses SHELL_MOMMY prefix, not SHELL_MOMMYS)
     let only_negative = env::var("SHELL_MOMMY_ONLY_NEGATIVE").is_ok_and(|v| v == "1")
@@ -97,7 +151,7 @@ pub fn load_config() -> ConfigMommy {
 
     let quiet = false; // Will be set later based on args
 
-    // Get recursion limit from environment or default to 100
+    // Get recursion limit from environment or default to 0
     let recursion_limit = env::var("CARGO_MOMMY_RECURSION_LIMIT")
         .or_else(|_| env::var("SHELL_MOMMY_RECURSION_LIMIT"))
         .ok()
@@ -109,16 +163,17 @@ pub fn load_config() -> ConfigMommy {
         roles,
         little,
         emotes,
-        color,
-        style,
+        moods,
+        colors,
         color_rgb,
+        styles,
         aliases,
         affirmations,
         needy,
         only_negative,
-        moods,
         quiet,
         recursion_limit,
+        binary_info,
     }
 }
 
@@ -194,19 +249,21 @@ mod tests {
         clear_all();
         let config = load_config();
 
-        // Expect: all defaults
-        assert_eq!(config.pronouns, "her");
-        assert!(config.roles == "mommy" || config.roles == "daddy"); // Depends on binary name
-        assert_eq!(config.little, "girl");
-        assert_eq!(config.emotes, "💖/💗/💓/💞");
-        assert_eq!(config.color, "white");
-        assert_eq!(config.style, "bold");
+        // Expect: all defaults (now pre-parsed into Vec<String>)
+        assert_eq!(config.pronouns, vec!["her"]);
+        assert!(
+            config.roles == vec!["mommy"] || config.roles == vec!["daddy"]
+        ); // Depends on binary name
+        assert_eq!(config.little, vec!["girl"]);
+        assert_eq!(config.emotes, vec!["💖", "💗", "💓", "💞"]);
+        assert_eq!(config.colors, vec!["white"]);
+        assert_eq!(config.styles, vec!["bold"]);
         assert_eq!(config.color_rgb, None);
         assert_eq!(config.aliases, None);
         assert_eq!(config.affirmations, None);
         assert!(!config.needy);
         assert!(!config.only_negative);
-        assert_eq!(config.moods, "chill");
+        assert_eq!(config.moods, vec!["chill"]);
         assert!(!config.quiet);
         assert_eq!(config.recursion_limit, 0);
     }
@@ -225,17 +282,20 @@ mod tests {
         }
         let config = load_config();
 
-        // Expect: pronouns: his; role: daddy; color_rgb: 255,255,255; needy: 1; only_negative: 1; moods: ominous/thirsty
-        assert_eq!(config.pronouns, "his");
-        assert_eq!(config.roles, "daddy");
-        assert_eq!(config.color_rgb, Some("255,255,255".to_string()));
+        // Expect: pre-parsed vectors
+        assert_eq!(config.pronouns, vec!["his"]);
+        assert_eq!(config.roles, vec!["daddy"]);
+        assert_eq!(
+            config.color_rgb,
+            Some(vec!["255,255,255".to_string()])
+        );
         assert!(config.needy, "expected 1, got {:#?}", config.needy);
         assert!(
             config.only_negative,
             "expected 1, got {:#?}",
             config.only_negative
         );
-        assert_eq!(config.moods, "ominous/thirsty");
+        assert_eq!(config.moods, vec!["ominous", "thirsty"]);
     }
 
     #[test]
@@ -251,7 +311,7 @@ mod tests {
 
         // These should work if we're running as cargo-mommy, otherwise fall back to defaults
         // Due to binary name detection, we can't reliably test this without renaming the binary
-        // So we just verify the config loads without errors
+        // So we just verify the config loads without errors and has pre-parsed values
         assert!(!config.pronouns.is_empty());
         assert!(!config.roles.is_empty());
         assert!(!config.little.is_empty());

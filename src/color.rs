@@ -1,5 +1,4 @@
 use crate::config::ConfigMommy;
-use crate::utils::parse_string;
 use ansi_term::{Color, Style};
 
 pub fn color_from_name(name: &str) -> Option<Color> {
@@ -29,53 +28,52 @@ pub fn color_from_rgb(rgb_str: &str) -> Option<Color> {
     Some(Color::RGB(r, g, b))
 }
 
+/// Apply a single style attribute to the Style object
+fn apply_style_attr(style: Style, attr: &str) -> Style {
+    match attr {
+        "bold" => style.bold(),
+        "italic" => style.italic(),
+        "dimmed" => style.dimmed(),
+        "underline" => style.underline(),
+        "blink" => style.blink(),
+        "reverse" => style.reverse(),
+        "hidden" => style.hidden(),
+        _ => style,
+    }
+}
+
 pub fn random_style_pick(config: &ConfigMommy) -> Style {
     let mut style = Style::new();
 
-    if let Some(ref rgb_env) = config.color_rgb {
-        let candidates = parse_string(rgb_env);
-        if !candidates.is_empty() {
-            let idx = fastrand::usize(..candidates.len());
-            if let Some(col) = color_from_rgb(&candidates[idx]) {
+    // Use pre-parsed color vectors from config
+    if let Some(ref rgb_candidates) = config.color_rgb {
+        if !rgb_candidates.is_empty() {
+            let idx = fastrand::usize(..rgb_candidates.len());
+            if let Some(col) = color_from_rgb(&rgb_candidates[idx]) {
                 style = style.fg(col);
             }
         }
-    } else {
-        let candidates = parse_string(&config.color);
-        if !candidates.is_empty() {
-            let idx = fastrand::usize(..candidates.len());
-            if let Some(col) = color_from_name(&candidates[idx]) {
-                style = style.fg(col);
-            }
+    } else if !config.colors.is_empty() {
+        let idx = fastrand::usize(..config.colors.len());
+        if let Some(col) = color_from_name(&config.colors[idx]) {
+            style = style.fg(col);
         }
     }
 
-    let style_combos: Vec<&str> = config
-        .style
-        .split('/')
-        .map(|s| s.trim())
-        .filter(|s| !s.is_empty())
-        .collect();
+    // Use pre-parsed style combinations from config
+    if !config.styles.is_empty() {
+        let idx = fastrand::usize(..config.styles.len());
+        let chosen_combo = &config.styles[idx];
 
-    if !style_combos.is_empty() {
-        let chosen_combo = style_combos[fastrand::usize(..style_combos.len())];
-        let styles_in_combo: Vec<String> = chosen_combo
+        // Parse comma-separated style attributes within the chosen combination
+        let styles_in_combo: Vec<&str> = chosen_combo
             .split(',')
-            .map(|s| s.trim().to_lowercase())
+            .map(|s| s.trim())
             .filter(|s| !s.is_empty())
             .collect();
 
-        for candidate in styles_in_combo {
-            match &candidate[..] {
-                "bold" => style = style.bold(),
-                "italic" => style = style.italic(),
-                "dimmed" => style = style.dimmed(),
-                "underline" => style = style.underline(),
-                "blink" => style = style.blink(),
-                "reverse" => style = style.reverse(),
-                "hidden" => style = style.hidden(),
-                _ => {}
-            }
+        for attr in styles_in_combo {
+            style = apply_style_attr(style, attr);
         }
     }
 
@@ -136,8 +134,8 @@ mod tests {
     fn test_color_style() {
         // Not RGB and bold:
         let mut config = load_config();
-        config.color = "red".to_string();
-        config.style = "bold".to_string();
+        config.colors = vec!["red".to_string()];
+        config.styles = vec!["bold".to_string()];
         config.color_rgb = None;
 
         let styled = random_style_pick(&config);
@@ -159,8 +157,8 @@ mod tests {
     fn test_rgb_with_two_styles() {
         // RGB and two styles:
         let mut config = load_config();
-        config.style = "underline, italic".to_string();
-        config.color_rgb = Some("128,0,255".to_string());
+        config.styles = vec!["underline, italic".to_string()];
+        config.color_rgb = Some(vec!["128,0,255".to_string()]);
 
         let styled = random_style_pick(&config);
         let output = styled.paint("Test").to_string();

@@ -1,6 +1,8 @@
 use crate::config::ConfigMommy;
 use std::io::{self, Write};
 
+/// Deprecated: Config values are now pre-parsed in load_config()
+/// This function is kept for backward compatibility
 pub fn parse_string(s: &str) -> Vec<String> {
     s.split('/')
         .map(|token| token.trim().to_lowercase())
@@ -8,6 +10,19 @@ pub fn parse_string(s: &str) -> Vec<String> {
         .collect()
 }
 
+/// Pick a random string from a pre-parsed Vec<String>
+/// Returns a reference to avoid cloning
+fn random_vec_pick(vec: &[String]) -> Option<&str> {
+    if vec.is_empty() {
+        None
+    } else {
+        let idx = fastrand::usize(..vec.len());
+        Some(&vec[idx])
+    }
+}
+
+/// Deprecated: Use random_vec_pick with pre-parsed Vec instead
+/// This function is kept for backward compatibility
 pub fn random_string_pick(input: &str) -> Option<String> {
     let parts = parse_string(input);
 
@@ -20,16 +35,18 @@ pub fn random_string_pick(input: &str) -> Option<String> {
 }
 
 pub fn fill_template(template: &str, config: &ConfigMommy) -> String {
-    let role = random_string_pick(&config.roles).unwrap_or_else(|| config.roles.clone());
-    let pronoun = random_string_pick(&config.pronouns).unwrap_or_else(|| config.pronouns.clone());
-    let little = random_string_pick(&config.little).unwrap_or_else(|| config.little.clone());
-    let emote = random_string_pick(&config.emotes).unwrap_or_else(|| config.emotes.clone());
+    // Pick random values from pre-parsed config vectors
+    // Use first element as fallback if vector is somehow empty
+    let role = random_vec_pick(&config.roles).unwrap_or("mommy");
+    let pronoun = random_vec_pick(&config.pronouns).unwrap_or("her");
+    let little = random_vec_pick(&config.little).unwrap_or("girl");
+    let emote = random_vec_pick(&config.emotes).unwrap_or("💖");
 
     template
-        .replace("{roles}", &role)
-        .replace("{pronouns}", &pronoun)
-        .replace("{little}", &little)
-        .replace("{emotes}", &emote)
+        .replace("{roles}", role)
+        .replace("{pronouns}", pronoun)
+        .replace("{little}", little)
+        .replace("{emotes}", emote)
 }
 
 pub fn graceful_print<T: std::fmt::Display>(s: T) {
@@ -86,10 +103,11 @@ mod tests {
     fn test_fill_template() {
         fastrand::seed(42);
         let mut config = load_config();
-        config.roles = "daddy/mommy".to_string();
-        config.pronouns = "his/her".to_string();
-        config.little = "baby".to_string();
-        config.emotes = "❤️‍🔥/🤓".to_string();
+        // Config now has pre-parsed Vec<String> fields
+        config.roles = vec!["daddy".to_string(), "mommy".to_string()];
+        config.pronouns = vec!["his".to_string(), "her".to_string()];
+        config.little = vec!["baby".to_string()];
+        config.emotes = vec!["❤️‍🔥".to_string(), "🤓".to_string()];
 
         let template = fill_template(
             "{roles} thinks {pronouns} {little} earned a big hug~ {emotes}",
