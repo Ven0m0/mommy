@@ -1,3 +1,6 @@
+[workspace]
+resolver = "2"
+
 [package]
 name = "shell-mommy"
 version = "0.1.6"
@@ -5,11 +8,12 @@ authors = ["Mincy Queen <sleepymincy@proton.me>"]
 edition = "2021"
 description = "Affirmations in your terminal! Now with cargo-mommy compatibility!"
 license = "Unlicense"
-repository = "https://github.com/sleepymincy/mommy"
+repository = "https://github.com/Ven0m0/mommy"
 keywords = ["mommy", "silly", "shell", "cli"]
 categories = ["command-line-utilities"]
 readme = "README.md"
 include = ["src/**/*", "LICENSE", "README.md"]
+exclude = [".github"]
 
 [[bin]]
 name = "mommy"
@@ -27,3 +31,13 @@ serde = { version = "1.0", features = ["derive"] }
 
 [dev-dependencies]
 serial_test = "3.2.0"
+
+[profile.release]
+codegen-units = 1
+strip = true
+lto = "fat"
+opt-level = 3
+debug = false
+debug-assertions = false
+overflow-checks = false
+panic = "abort"
