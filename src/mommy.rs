@@ -4,6 +4,7 @@ use crate::affirmations::{
 use crate::color::random_style_pick;
 use crate::config::load_config;
 use crate::utils::{fill_template, graceful_print};
+use owo_colors::OwoColorize;
 use std::env;
 use std::process::{Command, exit};
 
@@ -243,7 +244,7 @@ pub fn mommy() -> Result<i32, Box<dyn std::error::Error>> {
     };
 
     let output = fill_template(template, &config);
-    let styled_output = random_style_pick(&config).paint(output);
+    let styled_output = output.style(random_style_pick(&config));
     graceful_print(styled_output);
 
     Ok(exit_code)
