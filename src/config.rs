@@ -183,8 +183,11 @@ pub fn load_config() -> ConfigMommy {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use serial_test::serial;
     use std::env;
+    use std::sync::{LazyLock, Mutex};
+
+    // Mutex to serialize tests that modify environment variables
+    static ENV_TEST_LOCK: LazyLock<Mutex<()>> = LazyLock::new(|| Mutex::new(()));
 
     // Helper to clear all config‐related env vars.
     fn clear_all() {
@@ -222,8 +225,8 @@ mod tests {
     }
 
     #[test]
-    #[serial]
     fn test_env_with_fallback_prefers_primary_key() {
+        let _lock = ENV_TEST_LOCK.lock().unwrap();
         clear_all();
         unsafe {
             env::set_var("CARGO_MOMMYS_PRONOUNS", "their");
@@ -235,8 +238,8 @@ mod tests {
     }
 
     #[test]
-    #[serial]
     fn test_env_with_fallback_uses_shell_backup() {
+        let _lock = ENV_TEST_LOCK.lock().unwrap();
         clear_all();
         unsafe {
             env::set_var("SHELL_MOMMYS_PRONOUNS", "hers");
@@ -247,8 +250,8 @@ mod tests {
     }
 
     #[test]
-    #[serial]
     fn test_default_vars() {
+        let _lock = ENV_TEST_LOCK.lock().unwrap();
         clear_all();
         let config = load_config();
 
@@ -272,8 +275,8 @@ mod tests {
     }
 
     #[test]
-    #[serial]
     fn test_custom_vars() {
+        let _lock = ENV_TEST_LOCK.lock().unwrap();
         clear_all();
         unsafe {
             env::set_var("SHELL_MOMMYS_PRONOUNS", "his");
@@ -302,8 +305,8 @@ mod tests {
     }
 
     #[test]
-    #[serial]
     fn test_cargo_prefix_vars() {
+        let _lock = ENV_TEST_LOCK.lock().unwrap();
         clear_all();
         unsafe {
             env::set_var("CARGO_MOMMYS_PRONOUNS", "their");
