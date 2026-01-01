@@ -64,15 +64,9 @@ pub fn random_style_pick(config: &ConfigMommy) -> Style {
     // Use pre-parsed style combinations from config
     if !config.styles.is_empty() {
         let idx = fastrand::usize(..config.styles.len());
-        let chosen_combo = &config.styles[idx];
+        let styles_in_combo = &config.styles[idx];
 
-        // Parse comma-separated style attributes within the chosen combination
-        let styles_in_combo: Vec<&str> = chosen_combo
-            .split(',')
-            .map(|s| s.trim())
-            .filter(|s| !s.is_empty())
-            .collect();
-
+        // Styles are already parsed, just apply them
         for attr in styles_in_combo {
             style = apply_style_attr(style, attr);
         }
@@ -138,7 +132,7 @@ mod tests {
         // Not RGB and bold:
         let mut config = load_config();
         config.colors = vec!["red".to_string()];
-        config.styles = vec!["bold".to_string()];
+        config.styles = vec![vec!["bold".to_string()]];
         config.color_rgb = None;
 
         let styled = random_style_pick(&config);
@@ -161,7 +155,7 @@ mod tests {
 
         // RGB and two styles:
         let mut config = load_config();
-        config.styles = vec!["underline, italic".to_string()];
+        config.styles = vec![vec!["underline".to_string(), "italic".to_string()]];
         config.color_rgb = Some(vec!["128,0,255".to_string()]);
 
         let styled = random_style_pick(&config);

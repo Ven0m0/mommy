@@ -29,12 +29,13 @@ fn is_quiet_mode_enabled(args: &[String]) -> bool {
 }
 
 /// Pick a random string from a pre-parsed Vec<String>
-fn random_vec_pick(vec: &[String]) -> Option<String> {
+/// Returns a reference to avoid cloning
+fn random_vec_pick(vec: &[String]) -> Option<&str> {
     if vec.is_empty() {
         None
     } else {
         let idx = fastrand::usize(..vec.len());
-        Some(vec[idx].clone())
+        Some(&vec[idx])
     }
 }
 
@@ -127,7 +128,7 @@ pub fn mommy() -> Result<i32, Box<dyn std::error::Error>> {
     }
 
     // Use pre-parsed moods vector
-    let selected_mood = random_vec_pick(&config.moods).unwrap_or_else(|| "chill".to_string());
+    let selected_mood = random_vec_pick(&config.moods).unwrap_or("chill");
 
     let affirmations: Option<Affirmations> = if let Some(ref path) = config.affirmations {
         load_custom_affirmations_with_mood(path, &selected_mood)
@@ -178,12 +179,13 @@ pub fn mommy() -> Result<i32, Box<dyn std::error::Error>> {
         // Full implementation would require the begging state tracking from cargo-mommy
     }
 
-    // Filter out "please" from args if present
-    let filtered_args: Vec<String> = command_args
-        .iter()
-        .filter(|arg| *arg != "please")
-        .cloned()
-        .collect();
+    // Only filter "please" if it's actually present to avoid unnecessary allocation
+    let has_please = command_args.iter().any(|arg| arg == "please");
+    let filtered_args: Vec<&String> = if has_please {
+        command_args.iter().filter(|arg| *arg != "please").collect()
+    } else {
+        command_args.iter().collect()
+    };
 
     let exit_code: i32 = if config.needy {
         filtered_args.first().ok_or("Missing exit code")?.parse()?
@@ -198,14 +200,14 @@ pub fn mommy() -> Result<i32, Box<dyn std::error::Error>> {
         let new_recursion = config.recursion_limit + 1;
 
         let status = Command::new("cargo")
-            .args(&filtered_args)
+            .args(filtered_args.as_slice())
             .env("CARGO_MOMMY_RECURSION_LIMIT", new_recursion.to_string())
             .status()?;
 
         status.code().unwrap_or(1)
     } else {
         // Running as shell command wrapper
-        let raw_command = filtered_args.join(" ");
+        let raw_command = filtered_args.iter().map(|s| s.as_str()).collect::<Vec<_>>().join(" ");
         let run_command = if let Some(ref aliases_path) = config.aliases {
             format!(
                 "shopt -s expand_aliases; source \"{}\"; eval {}",

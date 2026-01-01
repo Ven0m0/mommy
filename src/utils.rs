@@ -1,15 +1,6 @@
 use crate::config::ConfigMommy;
 use std::io::{self, Write};
 
-/// Deprecated: Config values are now pre-parsed in load_config()
-/// This function is kept for backward compatibility
-pub fn parse_string(s: &str) -> Vec<String> {
-    s.split('/')
-        .map(|token| token.trim().to_lowercase())
-        .filter(|token| !token.is_empty())
-        .collect()
-}
-
 /// Pick a random string from a pre-parsed Vec<String>
 /// Returns a reference to avoid cloning
 fn random_vec_pick(vec: &[String]) -> Option<&str> {
@@ -21,19 +12,6 @@ fn random_vec_pick(vec: &[String]) -> Option<&str> {
     }
 }
 
-/// Deprecated: Use random_vec_pick with pre-parsed Vec instead
-/// This function is kept for backward compatibility
-pub fn random_string_pick(input: &str) -> Option<String> {
-    let parts = parse_string(input);
-
-    if parts.is_empty() {
-        None
-    } else {
-        let idx = fastrand::usize(..parts.len());
-        Some(parts[idx].to_string())
-    }
-}
-
 pub fn fill_template(template: &str, config: &ConfigMommy) -> String {
     // Pick random values from pre-parsed config vectors
     // Use first element as fallback if vector is somehow empty
@@ -42,11 +20,48 @@ pub fn fill_template(template: &str, config: &ConfigMommy) -> String {
     let little = random_vec_pick(&config.little).unwrap_or("girl");
     let emote = random_vec_pick(&config.emotes).unwrap_or("💖");
 
-    template
-        .replace("{roles}", role)
-        .replace("{pronouns}", pronoun)
-        .replace("{little}", little)
-        .replace("{emotes}", emote)
+    // Single-pass replacement to avoid intermediate allocations
+    // Pre-allocate with extra capacity for replacements
+    let mut result = String::with_capacity(template.len() + 20);
+    let mut last_end = 0;
+    let bytes = template.as_bytes();
+
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i] == b'{' {
+            // Add everything before this '{'
+            result.push_str(&template[last_end..i]);
+
+            // Check which placeholder this is
+            let remaining = &template[i..];
+            if remaining.starts_with("{roles}") {
+                result.push_str(role);
+                i += 7;
+                last_end = i;
+            } else if remaining.starts_with("{pronouns}") {
+                result.push_str(pronoun);
+                i += 10;
+                last_end = i;
+            } else if remaining.starts_with("{little}") {
+                result.push_str(little);
+                i += 8;
+                last_end = i;
+            } else if remaining.starts_with("{emotes}") {
+                result.push_str(emote);
+                i += 8;
+                last_end = i;
+            } else {
+                // Not a recognized placeholder, keep the '{'
+                i += 1;
+            }
+        } else {
+            i += 1;
+        }
+    }
+
+    // Add any remaining text after the last replacement
+    result.push_str(&template[last_end..]);
+    result
 }
 
 pub fn graceful_print<T: std::fmt::Display>(s: T) {
@@ -59,45 +74,6 @@ pub fn graceful_print<T: std::fmt::Display>(s: T) {
 mod tests {
     use super::*;
     use crate::config::load_config;
-
-    #[test]
-    fn test_parse_string() {
-        let s = "one/two/three";
-        let v = parse_string(s);
-        assert_eq!(v, vec!["one", "two", "three"]);
-    }
-
-    #[test]
-    fn test_parse_string_with_spaces() {
-        let s = "one    / two/      three ";
-        let v = parse_string(s);
-        assert_eq!(v, vec!["one", "two", "three"]);
-    }
-
-    #[test]
-    fn test_parse_empty_string() {
-        let s = "///   / ";
-        let v = parse_string(s);
-        assert!(v.is_empty());
-    }
-
-    #[test]
-    fn test_pick_empty_string() {
-        assert!(random_string_pick("").is_none());
-        assert!(random_string_pick("   ///   ").is_none());
-    }
-
-    #[test]
-    fn test_pick_some_string() {
-        fastrand::seed(42); // Making outputs predictable: https://blog.orhun.dev/zero-deps-random-in-rust/
-        let pick = random_string_pick("one/two/three").unwrap();
-        let pick2 = random_string_pick("one/two/three").unwrap();
-        let pick3 = random_string_pick("one/two/three").unwrap();
-
-        assert_eq!(pick, "three");
-        assert_eq!(pick2, "two");
-        assert_eq!(pick3, "three");
-    }
 
     #[test]
     fn test_fill_template() {

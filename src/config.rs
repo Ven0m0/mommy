@@ -52,8 +52,8 @@ pub struct ConfigMommy {
     pub colors: Vec<String>,
     pub color_rgb: Option<Vec<String>>,
 
-    // Pre-parsed style combinations
-    pub styles: Vec<String>,
+    // Pre-parsed style combinations (each is a Vec of style attributes)
+    pub styles: Vec<Vec<String>>,
 
     pub aliases: Option<String>,
     pub affirmations: Option<String>,
@@ -66,13 +66,6 @@ pub struct ConfigMommy {
     pub binary_info: BinaryInfo,
 }
 
-/// Detects the role from the binary name (e.g., "mommy", "daddy", "cargo-mommy", etc.)
-/// Deprecated: Use BinaryInfo::detect() instead for better performance
-#[allow(dead_code)]
-pub fn detect_role_from_binary() -> String {
-    BinaryInfo::detect().role
-}
-
 /// Gets the environment variable prefix based on the binary info
 fn get_env_prefix_from_binary(binary_info: &BinaryInfo) -> String {
     if binary_info.is_cargo_subcommand {
@@ -81,14 +74,6 @@ fn get_env_prefix_from_binary(binary_info: &BinaryInfo) -> String {
     } else {
         "SHELL_MOMMYS".to_string()
     }
-}
-
-/// Gets the environment variable prefix based on the detected role and binary name
-/// Deprecated: Use get_env_prefix_from_binary with BinaryInfo for better performance
-#[allow(dead_code)]
-pub fn get_env_prefix() -> String {
-    let binary_info = BinaryInfo::detect();
-    get_env_prefix_from_binary(&binary_info)
 }
 
 /// Helper to get env var with fallback to both prefixes
@@ -142,7 +127,18 @@ pub fn load_config() -> ConfigMommy {
     let moods = parse_config_string(&moods_raw);
     let colors = parse_config_string(&color_raw);
     let color_rgb = color_rgb_raw.map(|rgb| parse_config_string(&rgb));
-    let styles = parse_config_string(&style_raw);
+
+    // Pre-parse style combinations (each combo can have multiple comma-separated styles)
+    let styles: Vec<Vec<String>> = parse_config_string(&style_raw)
+        .into_iter()
+        .map(|combo| {
+            combo
+                .split(',')
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty())
+                .collect()
+        })
+        .collect();
 
     let aliases = env_with_fallback(&env_prefix, "ALIASES");
     let affirmations = env_with_fallback(&env_prefix, "AFFIRMATIONS");
@@ -263,7 +259,7 @@ mod tests {
         assert_eq!(config.little, vec!["girl"]);
         assert_eq!(config.emotes, vec!["💖", "💗", "💓", "💞"]);
         assert_eq!(config.colors, vec!["white"]);
-        assert_eq!(config.styles, vec!["bold"]);
+        assert_eq!(config.styles, vec![vec!["bold"]]);
         assert_eq!(config.color_rgb, None);
         assert_eq!(config.aliases, None);
         assert_eq!(config.affirmations, None);
