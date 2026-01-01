@@ -188,7 +188,13 @@ pub fn mommy() -> Result<i32, Box<dyn std::error::Error>> {
     };
 
     let exit_code: i32 = if config.needy {
-        filtered_args.first().ok_or("Missing exit code")?.parse()?
+        let code_str = filtered_args.first().ok_or("Missing exit code")?;
+        code_str.parse().map_err(|_| {
+            format!(
+                "Invalid exit code '{}'. Expected a number (e.g., 0 or 1)",
+                code_str
+            )
+        })?
     } else if is_cargo_command {
         // Running as cargo subcommand - execute cargo with the provided args
         if filtered_args.is_empty() {

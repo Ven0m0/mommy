@@ -61,7 +61,9 @@ pub fn fill_template(template: &str, config: &ConfigMommy) -> String {
 
     // Add any remaining text after the last replacement
     result.push_str(&template[last_end..]);
-    result
+
+    // Replace newlines with spaces to ensure single-line output
+    result.replace('\n', " ")
 }
 
 pub fn graceful_print<T: std::fmt::Display>(s: T) {
