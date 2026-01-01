@@ -5,7 +5,7 @@ resolver = "2"
 name = "shell-mommy"
 version = "0.1.6"
 authors = ["Mincy Queen <sleepymincy@proton.me>"]
-edition = "2021"
+edition = "2024"
 description = "Affirmations in your terminal! Now with cargo-mommy compatibility!"
 license = "Unlicense"
 repository = "https://github.com/Ven0m0/mommy"
@@ -53,27 +53,17 @@ rustflags=[
   "-C",
   "llvm-args=-enable-dfa-jump-thread",
 ]
-[target.aarch64-unknown-linux-gnu]
-linker="aarch64-linux-gnu-clang"
-rustflags=[
-  "-C",
-  "link-arg=-fuse-ld=lld",
-  "-C",
-  "llvm-args=-enable-dfa-jump-thread",
-]
 
 [env]
 RUSTC_BOOTSTRAP = "1"
 RUST_PANIC_STRATEGY ="abort"
-RUST_MIN_STACK = "16777216"
-RUST_LIB_BACKTRACE = "0"
 SCCACHE_IDLE_TIMEOUT = "10800"
 SCCACHE_DIRECT = "true"
 
 [build]
 incremental = false
-build-std = false                              # do not build the std library. has precedence over xargo
-xargo = true                                   # enable the use of xargo by default
+#build-std = false                              # do not build the std library. has precedence over xargo
+#xargo = true                                   # enable the use of xargo by default
 zig = false                                    # do not use zig cc for the builds
 default-target = "x86_64-unknown-linux-gnu"    # use this target if none is explicitly provided
 pre-build = [                                  # additional commands to run prior to building the package
