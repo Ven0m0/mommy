@@ -124,7 +124,20 @@
         "*drags {pronouns} nail along your cheek*\nsuch a good {little}~ {emotes}",
         "*bites {pronouns} lip*\nmhmm~ {emotes}",
         "give {roles} a kiss~ {emotes}",
-        "*heavy breathing against your neck* {emotes}"
+        "*heavy breathing against your neck* {emotes}",
+        "*pulls you onto {pronouns} lap*\nsuch a clever {little}~ {emotes}",
+        "*traces a finger down your spine*\nyou've been so good~ {emotes}",
+        "come here and let {roles} reward you properly~ {emotes}",
+        "*whispers* you know what good {little}s get~ {emotes}",
+        "*pins you against the wall*\nthat's my {little}~ {emotes}",
+        "*wraps {pronouns} hand around your throat gently*\nperfect~ {emotes}",
+        "mmm~ {roles} likes what {pronouns} {little} did there~ {emotes}",
+        "*leans in close*\nyou've earned some special attention~ {emotes}",
+        "*ties your hands*\nnow stay still while {roles} admires your work~ {emotes}",
+        "oh~? someone's being extra good today~\n*smirks* {emotes}",
+        "*scratches under your chin*\nsuch an obedient {little}~ {emotes}",
+        "that deserves a treat~\ncome to {roles}~ {emotes}",
+        "*growls approvingly* that's it~ {emotes}"
       ],
       "negative": [
         "you're so cute when you're flustered~ {emotes}",
@@ -135,7 +148,21 @@
         "you need to work harder to please {roles}~ {emotes}",
         "gosh you must be flustered~ {emotes}",
         "are you just keysmashing now~?\ncute~ {emotes}",
-        "is {roles}'s little {little} having trouble reaching the keyboard~? {emotes}"
+        "is {roles}'s little {little} having trouble reaching the keyboard~? {emotes}",
+        "*tightens your collar*\nfocus, {little}~ {emotes}",
+        "tsk tsk~ {roles} expected more from you~ {emotes}",
+        "*grabs your chin*\nlook at {roles} when you fail~ {emotes}",
+        "maybe {roles} needs to discipline {pronouns} {little}~ {emotes}",
+        "*leans in menacingly*\ntry again~ {emotes}",
+        "aww~ does someone need {roles} to hold their hand~? {emotes}",
+        "you're lucky you're cute when you mess up~ {emotes}",
+        "*smirks* that's adorable, but wrong~ {emotes}",
+        "keep failing like that and {roles} might have to punish you~ {emotes}",
+        "*crosses arms*\n{roles} is waiting, {little}~ {emotes}",
+        "no rewards until you get it right~\nchop chop~ {emotes}",
+        "*taps foot impatiently*\nyou're testing {roles}'s patience, pet~ {emotes}",
+        "someone's being a brat~\n{roles} knows how to fix that~ {emotes}",
+        "*raises an eyebrow*\nis that really your best~? {emotes}"
       ]
     }
   },
