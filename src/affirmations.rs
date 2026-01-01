@@ -2,14 +2,15 @@ use serde::Deserialize;
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
+use std::sync::LazyLock;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct MoodSet {
     pub positive: Vec<String>,
     pub negative: Vec<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct AffirmationsFile {
     #[serde(default)]
     pub moods: HashMap<String, MoodSet>,
@@ -45,27 +46,15 @@ fn affirmations_from_file(mut file: AffirmationsFile, mood: Option<&str>) -> Aff
     }
 }
 
-/// Loads the embedded affirmations without mood support.
-///
-/// This function is kept for backward compatibility with code that doesn't use the mood system.
-/// For new code, prefer `load_affirmations_with_mood` which supports mood selection.
-#[allow(dead_code)]
-pub fn load_affirmations() -> Option<Affirmations> {
-    parse_affirmations(include_str!("../assets/affirmations.json"), None)
-}
+// Cache parsed embedded affirmations to avoid repeated JSON parsing
+static EMBEDDED_AFFIRMATIONS: LazyLock<AffirmationsFile> = LazyLock::new(|| {
+    serde_json::from_str(include_str!("../assets/affirmations.json"))
+        .expect("Failed to parse embedded affirmations")
+});
 
 pub fn load_affirmations_with_mood(mood: &str) -> Option<Affirmations> {
-    parse_affirmations(include_str!("../assets/affirmations.json"), Some(mood))
-}
-
-/// Loads custom affirmations from a file without mood support.
-///
-/// This function is kept for backward compatibility with code that doesn't use the mood system.
-/// For new code, prefer `load_custom_affirmations_with_mood` which supports mood selection.
-#[allow(dead_code)]
-pub fn load_custom_affirmations<P: AsRef<Path>>(path: P) -> Option<Affirmations> {
-    let json_str = fs::read_to_string(&path).ok()?;
-    parse_affirmations(&json_str, None)
+    // Use cached parsed affirmations instead of parsing JSON every time
+    Some(affirmations_from_file(EMBEDDED_AFFIRMATIONS.clone(), Some(mood)))
 }
 
 pub fn load_custom_affirmations_with_mood<P: AsRef<Path>>(
