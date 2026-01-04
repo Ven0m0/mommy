@@ -1,5 +1,4 @@
-use std::env;
-use std::path::PathBuf;
+use std::{env, path::PathBuf};
 
 /// Cached binary information to avoid redundant filesystem calls
 #[derive(Debug, Clone)]
@@ -128,7 +127,8 @@ pub fn load_config() -> ConfigMommy {
     let colors = parse_config_string(&color_raw);
     let color_rgb = color_rgb_raw.map(|rgb| parse_config_string(&rgb));
 
-    // Pre-parse style combinations (each combo can have multiple comma-separated styles)
+    // Pre-parse style combinations (each combo can have multiple comma-separated
+    // styles)
     let styles: Vec<Vec<String>> = parse_config_string(&style_raw)
         .into_iter()
         .map(|combo| {
@@ -144,7 +144,8 @@ pub fn load_config() -> ConfigMommy {
     let affirmations = env_with_fallback(&env_prefix, "AFFIRMATIONS");
     let needy = env_with_fallback(&env_prefix, "NEEDY").is_some_and(|v| v == "1");
 
-    // Special handling for ONLY_NEGATIVE (uses SHELL_MOMMY prefix, not SHELL_MOMMYS)
+    // Special handling for ONLY_NEGATIVE (uses SHELL_MOMMY prefix, not
+    // SHELL_MOMMYS)
     let only_negative = env::var("SHELL_MOMMY_ONLY_NEGATIVE").is_ok_and(|v| v == "1")
         || env::var("CARGO_MOMMY_ONLY_NEGATIVE").is_ok_and(|v| v == "1");
 
@@ -179,8 +180,10 @@ pub fn load_config() -> ConfigMommy {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::env;
-    use std::sync::{LazyLock, Mutex};
+    use std::{
+        env,
+        sync::{LazyLock, Mutex},
+    };
 
     // Mutex to serialize tests that modify environment variables
     static ENV_TEST_LOCK: LazyLock<Mutex<()>> = LazyLock::new(|| Mutex::new(()));
@@ -253,9 +256,7 @@ mod tests {
 
         // Expect: all defaults (now pre-parsed into Vec<String>)
         assert_eq!(config.pronouns, vec!["her"]);
-        assert!(
-            config.roles == vec!["mommy"] || config.roles == vec!["daddy"]
-        ); // Depends on binary name
+        assert!(config.roles == vec!["mommy"] || config.roles == vec!["daddy"]); // Depends on binary name
         assert_eq!(config.little, vec!["girl"]);
         assert_eq!(config.emotes, vec!["💖", "💗", "💓", "💞"]);
         assert_eq!(config.colors, vec!["white"]);
@@ -287,10 +288,7 @@ mod tests {
         // Expect: pre-parsed vectors
         assert_eq!(config.pronouns, vec!["his"]);
         assert_eq!(config.roles, vec!["daddy"]);
-        assert_eq!(
-            config.color_rgb,
-            Some(vec!["255,255,255".to_string()])
-        );
+        assert_eq!(config.color_rgb, Some(vec!["255,255,255".to_string()]));
         assert!(config.needy, "expected 1, got {:#?}", config.needy);
         assert!(
             config.only_negative,
@@ -311,9 +309,10 @@ mod tests {
         }
         let config = load_config();
 
-        // These should work if we're running as cargo-mommy, otherwise fall back to defaults
-        // Due to binary name detection, we can't reliably test this without renaming the binary
-        // So we just verify the config loads without errors and has pre-parsed values
+        // These should work if we're running as cargo-mommy, otherwise fall back to
+        // defaults Due to binary name detection, we can't reliably test this
+        // without renaming the binary So we just verify the config loads
+        // without errors and has pre-parsed values
         assert!(!config.pronouns.is_empty());
         assert!(!config.roles.is_empty());
         assert!(!config.little.is_empty());

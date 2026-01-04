@@ -1,5 +1,5 @@
 use crate::config::ConfigMommy;
-use owo_colors::{Style, DynColors};
+use owo_colors::{DynColors, Style};
 
 pub fn color_from_name(name: &str) -> Option<DynColors> {
     match name {
@@ -38,7 +38,7 @@ fn apply_style_attr(mut style: Style, attr: &str) -> Style {
         "blink" => style = style.blink(),
         "reverse" => style = style.reversed(),
         "hidden" => style = style.hidden(),
-        _ => {},
+        _ => {}
     }
     style
 }
@@ -89,9 +89,15 @@ mod tests {
         assert_eq!(color_from_name("yellow"), Some(DynColors::Rgb(255, 255, 0)));
         assert_eq!(color_from_name("blue"), Some(DynColors::Rgb(0, 0, 255)));
         assert_eq!(color_from_name("purple"), Some(DynColors::Rgb(255, 0, 255)));
-        assert_eq!(color_from_name("magenta"), Some(DynColors::Rgb(255, 0, 255)));
+        assert_eq!(
+            color_from_name("magenta"),
+            Some(DynColors::Rgb(255, 0, 255))
+        );
         assert_eq!(color_from_name("cyan"), Some(DynColors::Rgb(0, 255, 255)));
-        assert_eq!(color_from_name("white"), Some(DynColors::Rgb(255, 255, 255)));
+        assert_eq!(
+            color_from_name("white"),
+            Some(DynColors::Rgb(255, 255, 255))
+        );
     }
 
     #[test]
@@ -143,10 +149,7 @@ mod tests {
             output.contains("\x1b["),
             "expected output to contain ANSI escape codes"
         );
-        assert!(
-            output.contains("Test"),
-            "expected output to contain 'Test'"
-        );
+        assert!(output.contains("Test"), "expected output to contain 'Test'");
     }
 
     #[test]
@@ -166,9 +169,6 @@ mod tests {
             output.contains("\x1b["),
             "expected output to contain ANSI escape codes"
         );
-        assert!(
-            output.contains("Test"),
-            "expected output to contain 'Test'"
-        );
+        assert!(output.contains("Test"), "expected output to contain 'Test'");
     }
 }

@@ -1,8 +1,5 @@
 use serde::Deserialize;
-use std::collections::HashMap;
-use std::fs;
-use std::path::Path;
-use std::sync::LazyLock;
+use std::{collections::HashMap, fs, path::Path, sync::LazyLock};
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct MoodSet {
@@ -54,7 +51,10 @@ static EMBEDDED_AFFIRMATIONS: LazyLock<AffirmationsFile> = LazyLock::new(|| {
 
 pub fn load_affirmations_with_mood(mood: &str) -> Option<Affirmations> {
     // Use cached parsed affirmations instead of parsing JSON every time
-    Some(affirmations_from_file(EMBEDDED_AFFIRMATIONS.clone(), Some(mood)))
+    Some(affirmations_from_file(
+        EMBEDDED_AFFIRMATIONS.clone(),
+        Some(mood),
+    ))
 }
 
 pub fn load_custom_affirmations_with_mood<P: AsRef<Path>>(

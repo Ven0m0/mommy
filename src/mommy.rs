@@ -1,12 +1,14 @@
-use crate::affirmations::{
-    Affirmations, load_affirmations_with_mood, load_custom_affirmations_with_mood,
+use crate::{
+    affirmations::{Affirmations, load_affirmations_with_mood, load_custom_affirmations_with_mood},
+    color::random_style_pick,
+    config::load_config,
+    utils::{fill_template, graceful_print},
 };
-use crate::color::random_style_pick;
-use crate::config::load_config;
-use crate::utils::{fill_template, graceful_print};
 use owo_colors::OwoColorize;
-use std::env;
-use std::process::{Command, exit};
+use std::{
+    env,
+    process::{Command, exit},
+};
 
 const RECURSION_LIMIT: usize = 100;
 
@@ -56,8 +58,7 @@ fn perform_role_transformation(
     new_role: &str,
     binary_info: &crate::config::BinaryInfo,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    use std::fs;
-    use std::os::unix::fs::PermissionsExt;
+    use std::{fs, os::unix::fs::PermissionsExt};
 
     let parent = binary_info
         .path
@@ -137,8 +138,7 @@ pub fn mommy() -> Result<i32, Box<dyn std::error::Error>> {
     };
 
     // Use const str instead of Vec allocation
-    const AFFIRMATIONS_ERROR: &str =
-        "{roles} failed to load any affirmations, {little}~ {emotes}";
+    const AFFIRMATIONS_ERROR: &str = "{roles} failed to load any affirmations, {little}~ {emotes}";
 
     let args: Vec<String> = env::args().collect();
     if args.len() < 2 {
@@ -176,7 +176,8 @@ pub fn mommy() -> Result<i32, Box<dyn std::error::Error>> {
     {
         let has_please = command_args.iter().any(|arg| arg == "please");
         // Begging logic would go here - for now, we just note its presence
-        // Full implementation would require the begging state tracking from cargo-mommy
+        // Full implementation would require the begging state tracking from
+        // cargo-mommy
     }
 
     // Only filter "please" if it's actually present to avoid unnecessary allocation
@@ -213,7 +214,11 @@ pub fn mommy() -> Result<i32, Box<dyn std::error::Error>> {
         status.code().unwrap_or(1)
     } else {
         // Running as shell command wrapper
-        let raw_command = filtered_args.iter().map(|s| s.as_str()).collect::<Vec<_>>().join(" ");
+        let raw_command = filtered_args
+            .iter()
+            .map(|s| s.as_str())
+            .collect::<Vec<_>>()
+            .join(" ");
         let run_command = if let Some(ref aliases_path) = config.aliases {
             format!(
                 "shopt -s expand_aliases; source \"{}\"; eval {}",
