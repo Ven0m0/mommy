@@ -1,5 +1,5 @@
 use crate::{
-    affirmations::{Affirmations, load_affirmations_with_mood, load_custom_affirmations_with_mood},
+    affirmations::{AffirmationData, load_affirmations_with_mood, load_custom_affirmations_with_mood},
     color::random_style_pick,
     config::load_config,
     utils::{fill_template, graceful_print},
@@ -13,7 +13,7 @@ use std::{
 const RECURSION_LIMIT: usize = 100;
 
 fn choose_template<'a>(
-    json_template: Option<&'a Vec<String>>,
+    json_template: Option<&'a [String]>,
     default_template: &'a str,
 ) -> &'a str {
     match json_template {
@@ -131,7 +131,7 @@ pub fn mommy() -> Result<i32, Box<dyn std::error::Error>> {
     // Use pre-parsed moods vector
     let selected_mood = random_vec_pick(&config.moods).unwrap_or("chill");
 
-    let affirmations: Option<Affirmations> = if let Some(ref path) = config.affirmations {
+    let affirmations: Option<AffirmationData> = if let Some(ref path) = config.affirmations {
         load_custom_affirmations_with_mood(path, &selected_mood)
     } else {
         load_affirmations_with_mood(&selected_mood)
@@ -180,13 +180,12 @@ pub fn mommy() -> Result<i32, Box<dyn std::error::Error>> {
         // cargo-mommy
     }
 
-    // Only filter "please" if it's actually present to avoid unnecessary allocation
-    let has_please = command_args.iter().any(|arg| arg == "please");
-    let filtered_args: Vec<&String> = if has_please {
-        command_args.iter().filter(|arg| *arg != "please").collect()
-    } else {
-        command_args.iter().collect()
-    };
+    // Filter out "please" and convert to &str in a single pass
+    let filtered_args: Vec<&str> = command_args
+        .iter()
+        .filter(|arg| *arg != "please")
+        .map(|s| s.as_str())
+        .collect();
 
     let exit_code: i32 = if config.needy {
         let code_str = filtered_args.first().ok_or("Missing exit code")?;
@@ -207,18 +206,15 @@ pub fn mommy() -> Result<i32, Box<dyn std::error::Error>> {
         let new_recursion = config.recursion_limit + 1;
 
         let status = Command::new("cargo")
-            .args(filtered_args.as_slice())
+            .args(&filtered_args)
             .env("CARGO_MOMMY_RECURSION_LIMIT", new_recursion.to_string())
             .status()?;
 
         status.code().unwrap_or(1)
     } else {
         // Running as shell command wrapper
-        let raw_command = filtered_args
-            .iter()
-            .map(|s| s.as_str())
-            .collect::<Vec<_>>()
-            .join(" ");
+        // Direct join without intermediate Vec allocation
+        let raw_command = filtered_args.join(" ");
         let run_command = if let Some(ref aliases_path) = config.aliases {
             format!(
                 "shopt -s expand_aliases; source \"{}\"; eval {}",
@@ -241,14 +237,14 @@ pub fn mommy() -> Result<i32, Box<dyn std::error::Error>> {
     let (template, _affirmation_type) = match (exit_code == 0, config.only_negative) {
         (true, false) => (
             choose_template(
-                affirmations.as_ref().map(|aff| &aff.positive),
+                affirmations.as_ref().map(|aff| aff.positive()),
                 AFFIRMATIONS_ERROR,
             ),
             "positive",
         ),
         (false, _) => (
             choose_template(
-                affirmations.as_ref().map(|aff| &aff.negative),
+                affirmations.as_ref().map(|aff| aff.negative()),
                 AFFIRMATIONS_ERROR,
             ),
             "negative",
