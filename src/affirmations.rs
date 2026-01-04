@@ -212,7 +212,7 @@ mod tests {
             affirmations
                 .positive()
                 .iter()
-                .any(|s: &String| s.contains("aeons") || s.contains("feared")),
+                .any(|s| s.contains("aeons") || s.contains("feared")),
             "expected ominous-themed positive affirmations"
         );
     }
