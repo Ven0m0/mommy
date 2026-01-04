@@ -24,22 +24,22 @@ pub struct Affirmations {
 fn parse_affirmations(json_str: &str, mood: Option<&str>) -> Option<Affirmations> {
     let file: AffirmationsFile = serde_json::from_str(json_str).ok()?;
 
-    Some(affirmations_from_file(file, mood))
+    Some(affirmations_from_file(&file, mood))
 }
 
-fn affirmations_from_file(mut file: AffirmationsFile, mood: Option<&str>) -> Affirmations {
+fn affirmations_from_file(file: &AffirmationsFile, mood: Option<&str>) -> Affirmations {
     if let Some(mood) = mood {
-        if let Some(mut mood_set) = file.moods.remove(mood) {
+        if let Some(mood_set) = file.moods.get(mood) {
             return Affirmations {
-                positive: std::mem::take(&mut mood_set.positive),
-                negative: std::mem::take(&mut mood_set.negative),
+                positive: mood_set.positive.clone(),
+                negative: mood_set.negative.clone(),
             };
         }
     }
 
     Affirmations {
-        positive: file.positive,
-        negative: file.negative,
+        positive: file.positive.clone(),
+        negative: file.negative.clone(),
     }
 }
 
@@ -51,10 +51,7 @@ static EMBEDDED_AFFIRMATIONS: LazyLock<AffirmationsFile> = LazyLock::new(|| {
 
 pub fn load_affirmations_with_mood(mood: &str) -> Option<Affirmations> {
     // Use cached parsed affirmations instead of parsing JSON every time
-    Some(affirmations_from_file(
-        EMBEDDED_AFFIRMATIONS.clone(),
-        Some(mood),
-    ))
+    Some(affirmations_from_file(&EMBEDDED_AFFIRMATIONS, Some(mood)))
 }
 
 pub fn load_custom_affirmations_with_mood<P: AsRef<Path>>(

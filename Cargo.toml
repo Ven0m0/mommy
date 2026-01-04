@@ -5,7 +5,7 @@ resolver = "2"
 name = "shell-mommy"
 version = "0.1.6"
 authors = ["Mincy Queen <sleepymincy@proton.me>"]
-edition = "2024"
+edition = "2021"
 description = "Affirmations in your terminal! Now with cargo-mommy compatibility!"
 license = "Unlicense"
 repository = "https://github.com/Ven0m0/mommy"
@@ -39,34 +39,6 @@ debug-assertions = false
 overflow-checks = false
 panic = "abort"
 rpath = false
-
-[target.x86_64-unknown-linux-gnu]
-linker="clang"
-rustflags=[
-  "-C",
-  "target-cpu=native",
-  "-C",
-  "link-arg=-fuse-ld=lld",
-  "-C",
-  "llvm-args=-enable-dfa-jump-thread",
-]
-
-[env]
-RUSTC_BOOTSTRAP = "1"
-RUST_PANIC_STRATEGY ="abort"
-SCCACHE_IDLE_TIMEOUT = "10800"
-SCCACHE_DIRECT = "true"
-
-[build]
-incremental = false
-#build-std = false                              # do not build the std library. has precedence over xargo
-#xargo = true                                   # enable the use of xargo by default
-zig = false                                    # do not use zig cc for the builds
-default-target = "x86_64-unknown-linux-gnu"    # use this target if none is explicitly provided
-pre-build = [                                  # additional commands to run prior to building the package
-  "dpkg --add-architecture $CROSS_DEB_ARCH", 
-  "apt-get update -y && apt-get -y install libssl-dev:$CROSS_DEB_ARCH"
-]              
 
 [workspace.metadata.cross.target.aarch64-unknown-linux-gnu]
 # Install libssl-dev:arm64, see <https://github.com/cross-rs/cross/blob/main/docs/custom_images.md#adding-dependencies-to-existing-images>
