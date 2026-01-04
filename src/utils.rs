@@ -29,8 +29,14 @@ pub fn fill_template(template: &str, config: &ConfigMommy) -> String {
     let mut i = 0;
     while i < bytes.len() {
         if bytes[i] == b'{' {
-            // Add everything before this '{'
-            result.push_str(&template[last_end..i]);
+            // Add everything before this '{', converting newlines to spaces
+            for ch in template[last_end..i].chars() {
+                if ch == '\n' {
+                    result.push(' ');
+                } else {
+                    result.push(ch);
+                }
+            }
 
             // Check which placeholder this is
             let remaining = &template[i..];
@@ -59,11 +65,16 @@ pub fn fill_template(template: &str, config: &ConfigMommy) -> String {
         }
     }
 
-    // Add any remaining text after the last replacement
-    result.push_str(&template[last_end..]);
+    // Add any remaining text after the last replacement, converting newlines to spaces
+    for ch in template[last_end..].chars() {
+        if ch == '\n' {
+            result.push(' ');
+        } else {
+            result.push(ch);
+        }
+    }
 
-    // Replace newlines with spaces to ensure single-line output
-    result.replace('\n', " ")
+    result
 }
 
 pub fn graceful_print<T: std::fmt::Display>(s: T) {

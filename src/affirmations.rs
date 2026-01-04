@@ -11,35 +11,99 @@ pub struct MoodSet {
 pub struct AffirmationsFile {
     #[serde(default)]
     pub moods: HashMap<String, MoodSet>,
+    #[serde(default)]
+    pub positive: Vec<String>,
+    #[serde(default)]
+    pub negative: Vec<String>,
+}
+
+#[derive(Debug)]
+pub struct Affirmations<'a> {
+    pub positive: &'a [String],
+    pub negative: &'a [String],
+}
+
+#[derive(Debug)]
+pub struct AffirmationsOwned {
     pub positive: Vec<String>,
     pub negative: Vec<String>,
 }
 
 #[derive(Debug)]
-pub struct Affirmations {
-    pub positive: Vec<String>,
-    pub negative: Vec<String>,
+pub enum AffirmationData<'a> {
+    Borrowed(Affirmations<'a>),
+    Owned(AffirmationsOwned),
 }
 
-fn parse_affirmations(json_str: &str, mood: Option<&str>) -> Option<Affirmations> {
+impl<'a> AffirmationData<'a> {
+    pub fn positive(&self) -> &[String] {
+        match self {
+            AffirmationData::Borrowed(a) => a.positive,
+            AffirmationData::Owned(a) => &a.positive,
+        }
+    }
+
+    pub fn negative(&self) -> &[String] {
+        match self {
+            AffirmationData::Borrowed(a) => a.negative,
+            AffirmationData::Owned(a) => &a.negative,
+        }
+    }
+}
+
+fn parse_affirmations(json_str: &str, mood: Option<&str>) -> Option<AffirmationsOwned> {
     let file: AffirmationsFile = serde_json::from_str(json_str).ok()?;
 
-    Some(affirmations_from_file(&file, mood))
+    Some(affirmations_from_file_owned(&file, mood))
 }
 
-fn affirmations_from_file(file: &AffirmationsFile, mood: Option<&str>) -> Affirmations {
+fn affirmations_from_file<'a>(file: &'a AffirmationsFile, mood: Option<&str>) -> Affirmations<'a> {
+    // Return references to avoid cloning entirely
     if let Some(mood) = mood {
         if let Some(mood_set) = file.moods.get(mood) {
             return Affirmations {
+                positive: &mood_set.positive,
+                negative: &mood_set.negative,
+            };
+        }
+    }
+
+    // Fallback to "chill" mood if available, otherwise use top-level arrays
+    if let Some(chill_mood) = file.moods.get("chill") {
+        Affirmations {
+            positive: &chill_mood.positive,
+            negative: &chill_mood.negative,
+        }
+    } else {
+        Affirmations {
+            positive: &file.positive,
+            negative: &file.negative,
+        }
+    }
+}
+
+fn affirmations_from_file_owned(file: &AffirmationsFile, mood: Option<&str>) -> AffirmationsOwned {
+    // For custom affirmations, we need owned data
+    if let Some(mood) = mood {
+        if let Some(mood_set) = file.moods.get(mood) {
+            return AffirmationsOwned {
                 positive: mood_set.positive.clone(),
                 negative: mood_set.negative.clone(),
             };
         }
     }
 
-    Affirmations {
-        positive: file.positive.clone(),
-        negative: file.negative.clone(),
+    // Fallback to "chill" mood if available, otherwise use top-level arrays
+    if let Some(chill_mood) = file.moods.get("chill") {
+        AffirmationsOwned {
+            positive: chill_mood.positive.clone(),
+            negative: chill_mood.negative.clone(),
+        }
+    } else {
+        AffirmationsOwned {
+            positive: file.positive.clone(),
+            negative: file.negative.clone(),
+        }
     }
 }
 
@@ -49,17 +113,18 @@ static EMBEDDED_AFFIRMATIONS: LazyLock<AffirmationsFile> = LazyLock::new(|| {
         .expect("Failed to parse embedded affirmations")
 });
 
-pub fn load_affirmations_with_mood(mood: &str) -> Option<Affirmations> {
+pub fn load_affirmations_with_mood(mood: &str) -> Option<AffirmationData<'static>> {
     // Use cached parsed affirmations instead of parsing JSON every time
-    Some(affirmations_from_file(&EMBEDDED_AFFIRMATIONS, Some(mood)))
+    // Returns references to the static embedded affirmations - no cloning!
+    Some(AffirmationData::Borrowed(affirmations_from_file(&EMBEDDED_AFFIRMATIONS, Some(mood))))
 }
 
 pub fn load_custom_affirmations_with_mood<P: AsRef<Path>>(
     path: P,
     mood: &str,
-) -> Option<Affirmations> {
+) -> Option<AffirmationData<'static>> {
     let json_str = fs::read_to_string(&path).ok()?;
-    parse_affirmations(&json_str, Some(mood))
+    Some(AffirmationData::Owned(parse_affirmations(&json_str, Some(mood))?))
 }
 
 #[cfg(test)]
@@ -84,18 +149,18 @@ mod tests {
 
         // Expect: at least one positive and one negative
         assert!(
-            !affirmations.positive.is_empty(),
+            !affirmations.positive().is_empty(),
             "expected at least one positive affirmation"
         );
         assert!(
-            !affirmations.negative.is_empty(),
+            !affirmations.negative().is_empty(),
             "expected at least one negative affirmation"
         );
 
         // Expect: one specific affirmation from the ../assets/affirmations.json
         assert!(
             affirmations
-                .positive
+                .positive()
                 .iter()
                 .any(|s| s == "*boops your nose* {emotes}")
         );
@@ -107,12 +172,12 @@ mod tests {
 
         // Expect: one valid positive and negative affirmations
         assert!(
-            aff.positive
+            aff.positive()
                 .iter()
                 .any(|s| s == "you're such a smart cookie~ {emotes}")
         );
         assert!(
-            aff.negative
+            aff.negative()
                 .iter()
                 .any(|s| s == "{roles} believes in you~ {emotes}")
         );
@@ -134,20 +199,20 @@ mod tests {
 
         // Expect: at least one positive and one negative
         assert!(
-            !affirmations.positive.is_empty(),
+            !affirmations.positive().is_empty(),
             "expected at least one positive affirmation in ominous"
         );
         assert!(
-            !affirmations.negative.is_empty(),
+            !affirmations.negative().is_empty(),
             "expected at least one negative affirmation in ominous"
         );
 
         // Expect: ominous-specific content
         assert!(
             affirmations
-                .positive
+                .positive()
                 .iter()
-                .any(|s| s.contains("aeons") || s.contains("feared")),
+                .any(|s: &String| s.contains("aeons") || s.contains("feared")),
             "expected ominous-themed positive affirmations"
         );
     }
@@ -159,11 +224,11 @@ mod tests {
 
         // Expect: at least one positive and one negative
         assert!(
-            !affirmations.positive.is_empty(),
+            !affirmations.positive().is_empty(),
             "expected at least one positive affirmation in thirsty"
         );
         assert!(
-            !affirmations.negative.is_empty(),
+            !affirmations.negative().is_empty(),
             "expected at least one negative affirmation in thirsty"
         );
     }
@@ -175,11 +240,11 @@ mod tests {
 
         // Expect: falls back to default positive/negative arrays
         assert!(
-            !affirmations.positive.is_empty(),
+            !affirmations.positive().is_empty(),
             "expected fallback positive affirmations"
         );
         assert!(
-            !affirmations.negative.is_empty(),
+            !affirmations.negative().is_empty(),
             "expected fallback negative affirmations"
         );
     }
