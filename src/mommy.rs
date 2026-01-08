@@ -2,7 +2,7 @@ use crate::{
     affirmations::{AffirmationData, load_affirmations_with_mood, load_custom_affirmations_with_mood},
     color::random_style_pick,
     config::load_config,
-    utils::{fill_template, graceful_print},
+    utils::{fill_template, graceful_print, random_vec_pick},
 };
 use owo_colors::OwoColorize;
 use std::{
@@ -12,6 +12,7 @@ use std::{
 
 const RECURSION_LIMIT: usize = 100;
 
+#[inline]
 fn choose_template<'a>(
     json_template: Option<&'a [String]>,
     default_template: &'a str,
@@ -30,23 +31,12 @@ fn is_quiet_mode_enabled(args: &[String]) -> bool {
     args.iter().any(|arg| arg == "--quiet" || arg == "-q")
 }
 
-/// Pick a random string from a pre-parsed Vec<String>
-/// Returns a reference to avoid cloning
-fn random_vec_pick(vec: &[String]) -> Option<&str> {
-    if vec.is_empty() {
-        None
-    } else {
-        let idx = fastrand::usize(..vec.len());
-        Some(&vec[idx])
-    }
-}
-
 /// Check if the command contains "i mean" for role transformation
-fn check_role_transformation(args: &[String]) -> Option<String> {
+fn check_role_transformation(args: &[String]) -> Option<&str> {
     // Look for pattern: "mommy i mean daddy" or similar
     for i in 0..args.len().saturating_sub(2) {
         if args[i] == "i" && args[i + 1] == "mean" && i + 2 < args.len() {
-            return Some(args[i + 2].clone());
+            return Some(&args[i + 2]);
         }
     }
     None

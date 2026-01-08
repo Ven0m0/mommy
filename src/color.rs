@@ -1,6 +1,7 @@
 use crate::config::ConfigMommy;
 use owo_colors::{DynColors, Style};
 
+#[inline]
 pub fn color_from_name(name: &str) -> Option<DynColors> {
     match name {
         "black" => Some(DynColors::Rgb(0, 0, 0)),
@@ -15,6 +16,7 @@ pub fn color_from_name(name: &str) -> Option<DynColors> {
     }
 }
 
+#[inline]
 pub fn color_from_rgb(rgb_str: &str) -> Option<DynColors> {
     let mut parts = rgb_str.split(',').map(str::trim);
     let r = parts.next()?.parse::<u8>().ok()?;

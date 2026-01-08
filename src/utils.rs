@@ -3,7 +3,8 @@ use std::io::{self, Write};
 
 /// Pick a random string from a pre-parsed Vec<String>
 /// Returns a reference to avoid cloning
-fn random_vec_pick(vec: &[String]) -> Option<&str> {
+#[inline]
+pub fn random_vec_pick(vec: &[String]) -> Option<&str> {
     if vec.is_empty() {
         None
     } else {
@@ -12,6 +13,7 @@ fn random_vec_pick(vec: &[String]) -> Option<&str> {
     }
 }
 
+#[inline]
 pub fn fill_template(template: &str, config: &ConfigMommy) -> String {
     // Pick random values from pre-parsed config vectors
     // Use first element as fallback if vector is somehow empty
