@@ -57,8 +57,8 @@ fn parse_affirmations(json_str: &str, mood: Option<&str>) -> Option<Affirmations
     Some(affirmations_from_file_owned(&file, mood))
 }
 
-/// Helper to get the appropriate mood set from the file
-/// Returns the requested mood, or falls back to "chill", or the top-level arrays
+/// Helper to get the appropriate mood set from the file.
+/// Returns the requested mood or the "chill" mood. Returns `None` if neither is found.
 #[inline]
 fn get_mood_set<'a>(file: &'a AffirmationsFile, mood: Option<&str>) -> Option<&'a MoodSet> {
     mood.and_then(|m| file.moods.get(m))
