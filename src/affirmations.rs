@@ -57,22 +57,20 @@ fn parse_affirmations(json_str: &str, mood: Option<&str>) -> Option<Affirmations
     Some(affirmations_from_file_owned(&file, mood))
 }
 
+/// Helper to get the appropriate mood set from the file
+/// Returns the requested mood, or falls back to "chill", or the top-level arrays
+#[inline]
+fn get_mood_set<'a>(file: &'a AffirmationsFile, mood: Option<&str>) -> Option<&'a MoodSet> {
+    mood.and_then(|m| file.moods.get(m))
+        .or_else(|| file.moods.get("chill"))
+}
+
 fn affirmations_from_file<'a>(file: &'a AffirmationsFile, mood: Option<&str>) -> Affirmations<'a> {
     // Return references to avoid cloning entirely
-    if let Some(mood) = mood {
-        if let Some(mood_set) = file.moods.get(mood) {
-            return Affirmations {
-                positive: &mood_set.positive,
-                negative: &mood_set.negative,
-            };
-        }
-    }
-
-    // Fallback to "chill" mood if available, otherwise use top-level arrays
-    if let Some(chill_mood) = file.moods.get("chill") {
+    if let Some(mood_set) = get_mood_set(file, mood) {
         Affirmations {
-            positive: &chill_mood.positive,
-            negative: &chill_mood.negative,
+            positive: &mood_set.positive,
+            negative: &mood_set.negative,
         }
     } else {
         Affirmations {
@@ -84,20 +82,10 @@ fn affirmations_from_file<'a>(file: &'a AffirmationsFile, mood: Option<&str>) ->
 
 fn affirmations_from_file_owned(file: &AffirmationsFile, mood: Option<&str>) -> AffirmationsOwned {
     // For custom affirmations, we need owned data
-    if let Some(mood) = mood {
-        if let Some(mood_set) = file.moods.get(mood) {
-            return AffirmationsOwned {
-                positive: mood_set.positive.clone(),
-                negative: mood_set.negative.clone(),
-            };
-        }
-    }
-
-    // Fallback to "chill" mood if available, otherwise use top-level arrays
-    if let Some(chill_mood) = file.moods.get("chill") {
+    if let Some(mood_set) = get_mood_set(file, mood) {
         AffirmationsOwned {
-            positive: chill_mood.positive.clone(),
-            negative: chill_mood.negative.clone(),
+            positive: mood_set.positive.clone(),
+            negative: mood_set.negative.clone(),
         }
     } else {
         AffirmationsOwned {
