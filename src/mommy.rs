@@ -206,7 +206,7 @@ pub fn mommy() -> Result<i32, Box<dyn std::error::Error>> {
         // Direct join without intermediate Vec allocation
         let raw_command = filtered_args.join(" ");
         let run_command = if let Some(ref aliases_path) = config.aliases {
-            // Removed eval to prevent command injection - execute directly instead
+            // Removed unnecessary eval; execute directly instead to avoid extra shell parsing
             format!(
                 "shopt -s expand_aliases; source \"{}\"; {}",
                 aliases_path, raw_command
