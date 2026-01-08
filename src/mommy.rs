@@ -122,9 +122,9 @@ pub fn mommy() -> Result<i32, Box<dyn std::error::Error>> {
     let selected_mood = random_vec_pick(&config.moods).unwrap_or("chill");
 
     let affirmations: Option<AffirmationData> = if let Some(ref path) = config.affirmations {
-        load_custom_affirmations_with_mood(path, &selected_mood)
+        load_custom_affirmations_with_mood(path, selected_mood)
     } else {
-        load_affirmations_with_mood(&selected_mood)
+        load_affirmations_with_mood(selected_mood)
     };
 
     // Use const str instead of Vec allocation
@@ -149,7 +149,7 @@ pub fn mommy() -> Result<i32, Box<dyn std::error::Error>> {
 
     // Check for role transformation
     if let Some(new_role) = check_role_transformation(&args) {
-        perform_role_transformation(&new_role, &config.binary_info)?;
+        perform_role_transformation(new_role, &config.binary_info)?;
         return Ok(0);
     }
 
@@ -164,7 +164,7 @@ pub fn mommy() -> Result<i32, Box<dyn std::error::Error>> {
     // Handle "please" for begging mode (if enabled)
     #[cfg(feature = "beg")]
     {
-        let has_please = command_args.iter().any(|arg| arg == "please");
+        let _has_please = command_args.iter().any(|arg| arg == "please");
         // Begging logic would go here - for now, we just note its presence
         // Full implementation would require the begging state tracking from
         // cargo-mommy
@@ -206,8 +206,9 @@ pub fn mommy() -> Result<i32, Box<dyn std::error::Error>> {
         // Direct join without intermediate Vec allocation
         let raw_command = filtered_args.join(" ");
         let run_command = if let Some(ref aliases_path) = config.aliases {
+            // Removed eval to prevent command injection - execute directly instead
             format!(
-                "shopt -s expand_aliases; source \"{}\"; eval {}",
+                "shopt -s expand_aliases; source \"{}\"; {}",
                 aliases_path, raw_command
             )
         } else {
