@@ -1,5 +1,8 @@
 use crate::{
-    affirmations::{AffirmationData, load_affirmations_with_mood, load_custom_affirmations_with_mood},
+    affirmations::{
+        load_affirmations_with_mood_mixing, load_custom_affirmations_with_mood_mixing,
+        AffirmationData,
+    },
     color::random_style_pick,
     config::load_config,
     utils::{fill_template, graceful_print, random_vec_pick},
@@ -7,16 +10,13 @@ use crate::{
 use owo_colors::OwoColorize;
 use std::{
     env,
-    process::{Command, exit},
+    process::{exit, Command},
 };
 
 const RECURSION_LIMIT: usize = 100;
 
 #[inline]
-fn choose_template<'a>(
-    json_template: Option<&'a [String]>,
-    default_template: &'a str,
-) -> &'a str {
+fn choose_template<'a>(json_template: Option<&'a [String]>, default_template: &'a str) -> &'a str {
     match json_template {
         Some(templates) if !templates.is_empty() => {
             let idx = fastrand::usize(..templates.len());
@@ -122,9 +122,9 @@ pub fn mommy() -> Result<i32, Box<dyn std::error::Error>> {
     let selected_mood = random_vec_pick(&config.moods).unwrap_or("chill");
 
     let affirmations: Option<AffirmationData> = if let Some(ref path) = config.affirmations {
-        load_custom_affirmations_with_mood(path, selected_mood)
+        load_custom_affirmations_with_mood_mixing(path, selected_mood, config.mood_mixing)
     } else {
-        load_affirmations_with_mood(selected_mood)
+        load_affirmations_with_mood_mixing(selected_mood, config.mood_mixing)
     };
 
     // Use const str instead of Vec allocation
@@ -206,7 +206,8 @@ pub fn mommy() -> Result<i32, Box<dyn std::error::Error>> {
         // Direct join without intermediate Vec allocation
         let raw_command = filtered_args.join(" ");
         let run_command = if let Some(ref aliases_path) = config.aliases {
-            // Removed unnecessary eval; execute directly instead to avoid extra shell parsing
+            // Removed unnecessary eval; execute directly instead to avoid extra shell
+            // parsing
             format!(
                 "shopt -s expand_aliases; source \"{}\"; {}",
                 aliases_path, raw_command

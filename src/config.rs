@@ -60,6 +60,7 @@ pub struct ConfigMommy {
     pub only_negative: bool,
     pub quiet: bool,
     pub recursion_limit: usize,
+    pub mood_mixing: bool,
 
     // Cached binary info
     pub binary_info: BinaryInfo,
@@ -143,6 +144,7 @@ pub fn load_config() -> ConfigMommy {
     let aliases = env_with_fallback(&env_prefix, "ALIASES");
     let affirmations = env_with_fallback(&env_prefix, "AFFIRMATIONS");
     let needy = env_with_fallback(&env_prefix, "NEEDY").is_some_and(|v| v == "1");
+    let mood_mixing = env_with_fallback(&env_prefix, "MOOD_MIXING").is_some_and(|v| v == "1");
 
     // Special handling for ONLY_NEGATIVE (uses SHELL_MOMMY prefix, not
     // SHELL_MOMMYS)
@@ -173,6 +175,7 @@ pub fn load_config() -> ConfigMommy {
         only_negative,
         quiet,
         recursion_limit,
+        mood_mixing,
         binary_info,
     }
 }
@@ -201,6 +204,7 @@ mod tests {
             "SHELL_MOMMYS_ALIASES",
             "SHELL_MOMMYS_AFFIRMATIONS",
             "SHELL_MOMMYS_NEEDY",
+            "SHELL_MOMMYS_MOOD_MIXING",
             "SHELL_MOMMY_ONLY_NEGATIVE",
             "SHELL_MOMMYS_MOODS",
             "CARGO_MOMMYS_PRONOUNS",
@@ -213,6 +217,7 @@ mod tests {
             "CARGO_MOMMYS_ALIASES",
             "CARGO_MOMMYS_AFFIRMATIONS",
             "CARGO_MOMMYS_NEEDY",
+            "CARGO_MOMMYS_MOOD_MIXING",
             "CARGO_MOMMYS_MOODS",
             "CARGO_MOMMY_ONLY_NEGATIVE",
         ];
@@ -266,6 +271,7 @@ mod tests {
         assert_eq!(config.affirmations, None);
         assert!(!config.needy);
         assert!(!config.only_negative);
+        assert!(!config.mood_mixing);
         assert_eq!(config.moods, vec!["chill"]);
         assert!(!config.quiet);
         assert_eq!(config.recursion_limit, 0);
@@ -280,6 +286,7 @@ mod tests {
             env::set_var("SHELL_MOMMYS_ROLES", "daddy");
             env::set_var("SHELL_MOMMYS_COLOR_RGB", "255,255,255");
             env::set_var("SHELL_MOMMYS_NEEDY", "1");
+            env::set_var("SHELL_MOMMYS_MOOD_MIXING", "1");
             env::set_var("SHELL_MOMMY_ONLY_NEGATIVE", "1");
             env::set_var("SHELL_MOMMYS_MOODS", "ominous/thirsty");
         }
@@ -290,6 +297,7 @@ mod tests {
         assert_eq!(config.roles, vec!["daddy"]);
         assert_eq!(config.color_rgb, Some(vec!["255,255,255".to_string()]));
         assert!(config.needy, "expected 1, got {:#?}", config.needy);
+        assert!(config.mood_mixing, "expected mood mixing to be enabled");
         assert!(
             config.only_negative,
             "expected 1, got {:#?}",

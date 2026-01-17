@@ -67,7 +67,8 @@ pub fn fill_template(template: &str, config: &ConfigMommy) -> String {
         }
     }
 
-    // Add any remaining text after the last replacement, converting newlines to spaces
+    // Add any remaining text after the last replacement, converting newlines to
+    // spaces
     for ch in template[last_end..].chars() {
         if ch == '\n' {
             result.push(' ');
