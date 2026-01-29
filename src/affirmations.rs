@@ -145,8 +145,7 @@ fn mix_moods(
                 // Find a random primary affirmation to append to
                 if !mixed_positive.is_empty() {
                     let primary_idx = fastrand::usize(..mixed_positive.len());
-                    mixed_positive[primary_idx].push(' ');
-                    mixed_positive[primary_idx].push_str(secondary_affirmation);
+let _ = std::fmt::Write::write_fmt(&mut mixed_positive[primary_idx], format_args!(" {}", secondary_affirmation));
                 }
             }
         }
