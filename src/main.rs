@@ -2,6 +2,8 @@ mod affirmations;
 mod color;
 mod config;
 mod mommy;
+#[cfg(feature = "beg")]
+mod state;
 mod utils;
 
 fn main() {
