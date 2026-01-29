@@ -145,8 +145,8 @@ fn mix_moods(
                 // Find a random primary affirmation to append to
                 if !mixed_positive.is_empty() {
                     let primary_idx = fastrand::usize(..mixed_positive.len());
-                    mixed_positive[primary_idx] =
-                        format!("{} {}", mixed_positive[primary_idx], secondary_affirmation);
+                    mixed_positive[primary_idx].push(' ');
+                    mixed_positive[primary_idx].push_str(secondary_affirmation);
                 }
             }
         }
@@ -157,8 +157,8 @@ fn mix_moods(
                 // Find a random primary affirmation to append to
                 if !mixed_negative.is_empty() {
                     let primary_idx = fastrand::usize(..mixed_negative.len());
-                    mixed_negative[primary_idx] =
-                        format!("{} {}", mixed_negative[primary_idx], secondary_affirmation);
+                    mixed_negative[primary_idx].push(' ');
+                    mixed_negative[primary_idx].push_str(secondary_affirmation);
                 }
             }
         }
