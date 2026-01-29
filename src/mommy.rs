@@ -164,10 +164,28 @@ pub fn mommy() -> Result<i32, Box<dyn std::error::Error>> {
     // Handle "please" for begging mode (if enabled)
     #[cfg(feature = "beg")]
     {
-        let _has_please = command_args.iter().any(|arg| arg == "please");
-        // Begging logic would go here - for now, we just note its presence
-        // Full implementation would require the begging state tracking from
-        // cargo-mommy
+        let has_please = command_args.iter().any(|arg| arg == "please");
+        let mut state = crate::state::State::load()?;
+        if state.mood == crate::state::Mood::Angry {
+            if has_please {
+                state.mood = crate::state::Mood::Chill;
+                if let Err(e) = state.save() {
+                    eprintln!("mommy failed to remember how she feels: {}", e);
+                }
+                let output =
+                    fill_template("{roles} forgives {pronouns} {little}~ {emotes}", &config);
+                let styled_output = output.style(random_style_pick(&config));
+                graceful_print(styled_output);
+            } else {
+                let output = fill_template(
+                    "{roles} is waiting for {pronouns} {little} to say please~ {emotes}",
+                    &config,
+                );
+                let styled_output = output.style(random_style_pick(&config));
+                graceful_print(styled_output);
+                exit(1);
+            }
+        }
     }
 
     // Filter out "please" and convert to &str in a single pass
@@ -220,6 +238,20 @@ pub fn mommy() -> Result<i32, Box<dyn std::error::Error>> {
 
         status.code().unwrap_or(1)
     };
+
+    // Update begging state (if enabled)
+    #[cfg(feature = "beg")]
+    {
+        let mut state = crate::state::State::load()?;
+        state.mood = if exit_code == 0 {
+            crate::state::Mood::Chill
+        } else {
+            crate::state::Mood::Angry
+        };
+        if let Err(e) = state.save() {
+            eprintln!("mommy failed to remember how she feels: {}", e);
+        }
+    }
 
     // Skip output if quiet mode is enabled
     if config.quiet {
