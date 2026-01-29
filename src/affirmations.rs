@@ -156,8 +156,7 @@ let _ = std::fmt::Write::write_fmt(&mut mixed_positive[primary_idx], format_args
                 // Find a random primary affirmation to append to
                 if !mixed_negative.is_empty() {
                     let primary_idx = fastrand::usize(..mixed_negative.len());
-                    mixed_negative[primary_idx].push(' ');
-                    mixed_negative[primary_idx].push_str(secondary_affirmation);
+let _ = std::fmt::Write::write_fmt(&mut mixed_negative[primary_idx], format_args!(" {}", secondary_affirmation));
                 }
             }
         }
