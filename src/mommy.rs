@@ -244,12 +244,14 @@ pub fn mommy() -> Result<i32, Box<dyn std::error::Error>> {
     // Update begging state (if enabled)
     #[cfg(feature = "beg")]
     {
-        if exit_code != 0 {
-            let mut state = crate::state::State::load()?;
-            state.mood = crate::state::Mood::Angry;
-            if let Err(e) = state.save() {
-                eprintln!("mommy failed to remember how she feels: {}", e);
-            }
+        let mut state = crate::state::State::load()?;
+        state.mood = if exit_code == 0 {
+            crate::state::Mood::Chill
+        } else {
+            crate::state::Mood::Angry
+        };
+        if let Err(e) = state.save() {
+            eprintln!("mommy failed to remember how she feels: {}", e);
         }
     }
 
