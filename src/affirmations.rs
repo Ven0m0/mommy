@@ -211,7 +211,7 @@ pub fn load_custom_affirmations_with_mood_mixing<P: AsRef<Path>>(
         // Mix ominous with thirsty (20% chance)
         if let Some(mixed) = mix_moods(&file, "ominous", "thirsty", 0.2) {
             return Some(match mixed {
-                AffirmationData::Owned(owned) => AffirmationData::Owned(owned),
+                owned @ AffirmationData::Owned(_) => owned,
                 AffirmationData::Borrowed(borrowed) => AffirmationData::Owned(AffirmationsOwned {
                     positive: borrowed.positive.to_vec(),
                     negative: borrowed.negative.to_vec(),
