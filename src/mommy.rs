@@ -172,10 +172,8 @@ pub fn mommy() -> Result<i32, Box<dyn std::error::Error>> {
                 if let Err(e) = state.save() {
                     eprintln!("mommy failed to remember how she feels: {}", e);
                 }
-                let output = fill_template(
-                    "{roles} forgives {pronouns} {little}~ {emotes}",
-                    &config,
-                );
+                let output =
+                    fill_template("{roles} forgives {pronouns} {little}~ {emotes}", &config);
                 let styled_output = output.style(random_style_pick(&config));
                 graceful_print(styled_output);
             } else {
