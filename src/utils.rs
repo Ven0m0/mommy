@@ -60,6 +60,7 @@ pub fn fill_template(template: &str, config: &ConfigMommy) -> String {
                 last_end = i;
             } else {
                 // Not a recognized placeholder, keep the '{'
+                last_end = i;
                 i += 1;
             }
         } else {
@@ -107,4 +108,18 @@ mod tests {
         );
         assert_eq!(template, "mommy thinks his baby earned a big hug~ ❤️‍🔥");
     }
+
+    #[test]
+    fn test_reproduce_bug() {
+        let mut config = load_config();
+        config.roles = vec!["mommy".to_string()];
+
+        // This template contains an unknown placeholder {unknown}
+        // The bug causes the text before {unknown} to be duplicated.
+        let template = "Hello {unknown} world";
+        let result = fill_template(template, &config);
+
+        assert_eq!(result, "Hello {unknown} world");
+    }
+
 }
