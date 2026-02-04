@@ -89,8 +89,10 @@ jobs:
           mkdir -p debian-package/usr/bin
           mkdir -p debian-package/usr/share/doc/shell-mommy
           # Copy binaries
-          cp target/release/mommy debian-package/usr/bin/
-          cp target/release/cargo-mommy debian-package/usr/bin/
+          # The binary is located in target/x86_64-unknown-linux-gnu/release/ because of .cargo/config.toml
+          cp target/x86_64-unknown-linux-gnu/release/mommy debian-package/usr/bin/
+          # cargo-mommy is just a copy of mommy
+          cp target/x86_64-unknown-linux-gnu/release/mommy debian-package/usr/bin/cargo-mommy
           # Copy documentation
           cp README.md debian-package/usr/share/doc/shell-mommy/
           # Create control file
