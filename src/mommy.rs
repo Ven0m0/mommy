@@ -118,17 +118,6 @@ pub fn mommy() -> Result<i32, Box<dyn std::error::Error>> {
         return Ok(2); // Special exit code for recursion overflow
     }
 
-    // Use pre-parsed moods vector
-    let selected_mood = random_vec_pick(&config.moods).unwrap_or("chill");
-
-    let affirmations: Option<AffirmationData> = if let Some(ref path) = config.affirmations {
-        load_custom_affirmations_with_mood_mixing(path, selected_mood, config.mood_mixing)
-    } else {
-        load_affirmations_with_mood_mixing(selected_mood, config.mood_mixing)
-    };
-
-    // Use const str instead of Vec allocation
-    const AFFIRMATIONS_ERROR: &str = "{roles} failed to load any affirmations, {little}~ {emotes}";
 
     let args: Vec<String> = env::args().collect();
     if args.len() < 2 {
@@ -259,6 +248,23 @@ pub fn mommy() -> Result<i32, Box<dyn std::error::Error>> {
     if config.quiet {
         return Ok(exit_code);
     }
+
+    // Optimization: If the command succeeded and we only want to show negative affirmations,
+    // we can skip loading affirmations entirely.
+    if exit_code == 0 && config.only_negative {
+        return Ok(exit_code);
+    }
+    // Use pre-parsed moods vector
+    let selected_mood = random_vec_pick(&config.moods).unwrap_or("chill");
+
+    let affirmations: Option<AffirmationData> = if let Some(ref path) = config.affirmations {
+        load_custom_affirmations_with_mood_mixing(path, selected_mood, config.mood_mixing)
+    } else {
+        load_affirmations_with_mood_mixing(selected_mood, config.mood_mixing)
+    };
+
+    // Use const str instead of Vec allocation
+    const AFFIRMATIONS_ERROR: &str = "{roles} failed to load any affirmations, {little}~ {emotes}";
 
     let (template, _affirmation_type) = match (exit_code == 0, config.only_negative) {
         (true, false) => (
