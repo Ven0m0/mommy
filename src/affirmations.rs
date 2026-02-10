@@ -161,12 +161,17 @@ fn mix_moods(
                 let _ = std::fmt::Write::write_fmt(&mut mixed_negative[primary_idx], format_args!(" {}", secondary_affirmation));
             }
         }
-    }
 
-    Some(AffirmationsOwned {
-        positive: mixed_positive,
-        negative: mixed_negative,
-    })
+        Some(AffirmationData::Owned(AffirmationsOwned {
+            positive: mixed_positive,
+            negative: mixed_negative,
+        }))
+    } else {
+        Some(AffirmationData::Borrowed(Affirmations {
+            positive: &primary_set.positive,
+            negative: &primary_set.negative,
+        }))
+    }
 }
 
 /// Load affirmations with optional mood mixing support
@@ -179,7 +184,7 @@ pub fn load_affirmations_with_mood_mixing(
     if enable_mixing && mood == "ominous" {
         // Mix ominous with thirsty (20% chance)
         if let Some(mixed) = mix_moods(&EMBEDDED_AFFIRMATIONS, "ominous", "thirsty", 0.2) {
-            return Some(AffirmationData::Owned(mixed));
+            return Some(mixed);
         }
     }
 
@@ -193,14 +198,16 @@ pub fn load_custom_affirmations_with_mood_mixing<P: AsRef<Path>>(
     mood: &str,
     enable_mixing: bool,
 ) -> Option<AffirmationData<'static>> {
-    if enable_mixing && mood == "ominous" {
-        // Load the custom file and attempt mixing
-        let json_str = fs::read_to_string(&path).ok()?;
-        let file: AffirmationsFile = serde_json::from_str(&json_str).ok()?;
+    let json_str = fs::read_to_string(&path).ok()?;
+    let file: AffirmationsFile = serde_json::from_str(&json_str).ok()?;
 
+    if enable_mixing && mood == "ominous" {
         // Mix ominous with thirsty (20% chance)
         if let Some(mixed) = mix_moods(&file, "ominous", "thirsty", 0.2) {
-            return Some(AffirmationData::Owned(mixed));
+            return Some(AffirmationData::Owned(AffirmationsOwned {
+                positive: mixed.positive().to_vec(),
+                negative: mixed.negative().to_vec(),
+            }));
         }
 
         // Fallback: use the already parsed file
@@ -208,7 +215,10 @@ pub fn load_custom_affirmations_with_mood_mixing<P: AsRef<Path>>(
     }
 
     // Fall back to regular mood loading
-    load_custom_affirmations_with_mood(path, mood)
+    Some(AffirmationData::Owned(affirmations_from_file_owned(
+        &file,
+        Some(mood),
+    )))
 }
 
 #[cfg(test)]
@@ -266,7 +276,7 @@ mod tests {
     #[test]
     fn load_custom_affirmations_missing_file() {
         let path = "/nonexistent/path/to/file";
-        let aff = load_custom_affirmations_with_mood(path, "chill");
+        let aff = load_custom_affirmations_with_mood_mixing(path, "chill", false);
 
         // Expect: None for nonexistent path
         assert!(aff.is_none(), "expected None for bad path, got {:#?}", aff);
@@ -399,11 +409,11 @@ mod tests {
 
         let mixed = result.unwrap();
         assert!(
-            !mixed.positive.is_empty(),
+            !mixed.positive().is_empty(),
             "mixed positive should not be empty"
         );
         assert!(
-            !mixed.negative.is_empty(),
+            !mixed.negative().is_empty(),
             "mixed negative should not be empty"
         );
 
@@ -439,12 +449,12 @@ mod tests {
 
         let mixed = result.unwrap();
         assert_eq!(
-            mixed.positive.len(),
+            mixed.positive().len(),
             1,
             "should have one positive affirmation"
         );
         assert_eq!(
-            mixed.negative.len(),
+            mixed.negative().len(),
             1,
             "should have one negative affirmation"
         );
