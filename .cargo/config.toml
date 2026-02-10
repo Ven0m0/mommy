@@ -15,7 +15,5 @@ rustflags = [
   "-C",
   "target-cpu=native",
   "-C",
-  "link-arg=-fuse-ld=lld",
-  "-C",
   "llvm-args=-enable-dfa-jump-thread",
 ]
