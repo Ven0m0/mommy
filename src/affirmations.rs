@@ -1,20 +1,37 @@
+use std::fs;
+use std::path::Path;
+use std::sync::LazyLock;
+
 use serde::Deserialize;
-use std::{collections::HashMap, fs, path::Path, sync::LazyLock};
 
 #[derive(Debug, Deserialize, Clone)]
-pub struct MoodSet {
+struct MoodSet {
+    positive: Vec<String>,
+    negative: Vec<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct AffirmationsFile {
+    moods: std::collections::HashMap<String, MoodSet>,
+    #[serde(default)]
+    positive: Vec<String>,
+    #[serde(default)]
+    negative: Vec<String>,
+}
+
+#[derive(Debug)]
+pub struct AffirmationsOwned {
     pub positive: Vec<String>,
     pub negative: Vec<String>,
 }
 
-#[derive(Debug, Deserialize, Clone)]
-pub struct AffirmationsFile {
-    #[serde(default)]
-    pub moods: HashMap<String, MoodSet>,
-    #[serde(default)]
-    pub positive: Vec<String>,
-    #[serde(default)]
-    pub negative: Vec<String>,
+impl AffirmationsOwned {
+    pub fn positive(&self) -> &[String] {
+        &self.positive
+    }
+    pub fn negative(&self) -> &[String] {
+        &self.negative
+    }
 }
 
 #[derive(Debug)]
@@ -24,44 +41,33 @@ pub struct Affirmations<'a> {
 }
 
 #[derive(Debug)]
-pub struct AffirmationsOwned {
-    pub positive: Vec<String>,
-    pub negative: Vec<String>,
-}
-
-#[derive(Debug)]
 pub enum AffirmationData<'a> {
-    Borrowed(Affirmations<'a>),
     Owned(AffirmationsOwned),
+    Borrowed(Affirmations<'a>),
 }
 
 impl<'a> AffirmationData<'a> {
     pub fn positive(&self) -> &[String] {
         match self {
-            AffirmationData::Borrowed(a) => a.positive,
-            AffirmationData::Owned(a) => &a.positive,
+            Self::Owned(o) => o.positive(),
+            Self::Borrowed(b) => b.positive,
         }
     }
 
     pub fn negative(&self) -> &[String] {
         match self {
-            AffirmationData::Borrowed(a) => a.negative,
-            AffirmationData::Owned(a) => &a.negative,
+            Self::Owned(o) => o.negative(),
+            Self::Borrowed(b) => b.negative,
         }
     }
 }
 
-/// Helper to get the appropriate mood set from the file.
-/// Returns the requested mood or the "chill" mood. Returns `None` if neither is
-/// found.
-#[inline]
 fn get_mood_set<'a>(file: &'a AffirmationsFile, mood: Option<&str>) -> Option<&'a MoodSet> {
     mood.and_then(|m| file.moods.get(m))
         .or_else(|| file.moods.get("chill"))
 }
 
 fn affirmations_from_file<'a>(file: &'a AffirmationsFile, mood: Option<&str>) -> Affirmations<'a> {
-    // Return references to avoid cloning entirely
     if let Some(mood_set) = get_mood_set(file, mood) {
         Affirmations {
             positive: &mood_set.positive,
@@ -76,7 +82,6 @@ fn affirmations_from_file<'a>(file: &'a AffirmationsFile, mood: Option<&str>) ->
 }
 
 fn affirmations_from_file_owned(file: &AffirmationsFile, mood: Option<&str>) -> AffirmationsOwned {
-    // For custom affirmations, we need owned data
     if let Some(mood_set) = get_mood_set(file, mood) {
         AffirmationsOwned {
             positive: mood_set.positive.clone(),
@@ -90,63 +95,70 @@ fn affirmations_from_file_owned(file: &AffirmationsFile, mood: Option<&str>) -> 
     }
 }
 
-// Cache parsed embedded affirmations to avoid repeated JSON parsing
 static EMBEDDED_AFFIRMATIONS: LazyLock<AffirmationsFile> = LazyLock::new(|| {
     serde_json::from_str(include_str!("../assets/affirmations.json"))
         .expect("Failed to parse embedded affirmations")
 });
 
 pub fn load_affirmations_with_mood(mood: &str) -> Option<AffirmationData<'static>> {
-    // Use cached parsed affirmations instead of parsing JSON every time
-    // Returns references to the static embedded affirmations - no cloning!
     Some(AffirmationData::Borrowed(affirmations_from_file(
         &EMBEDDED_AFFIRMATIONS,
         Some(mood),
     )))
 }
 
-/// Mixes affirmations from two moods with a specified probability
-/// Returns ominous mood with a chance to append thirsty affirmations
-fn mix_moods<'a>(
-    file: &'a AffirmationsFile,
+fn parse_affirmations(json_str: &str, mood: Option<&str>) -> Option<AffirmationsOwned> {
+    let file: AffirmationsFile = serde_json::from_str(json_str).ok()?;
+    Some(affirmations_from_file_owned(&file, mood))
+}
+
+pub fn load_custom_affirmations_with_mood<P: AsRef<Path>>(
+    path: P,
+    mood: &str,
+) -> Option<AffirmationData<'static>> {
+    let json_str = fs::read_to_string(&path).ok()?;
+    Some(AffirmationData::Owned(parse_affirmations(
+        &json_str,
+        Some(mood),
+    )?))
+}
+
+fn mix_moods(
+    file: &AffirmationsFile,
     primary_mood: &str,
     secondary_mood: &str,
     probability: f32,
-) -> Option<AffirmationData<'a>> {
+) -> Option<AffirmationsOwned> {
+    // Check probability first to avoid cloning if not mixing
+    if fastrand::f32() >= probability {
+        return None;
+    }
+
     let primary_set = file.moods.get(primary_mood)?;
     let secondary_set = file.moods.get(secondary_mood)?;
 
-    // Use fastrand for consistency with the rest of the codebase
-    if fastrand::f32() < probability {
-        let mut mixed_positive = primary_set.positive.clone();
-        let mut mixed_negative = primary_set.negative.clone();
+    let mut mixed_positive = primary_set.positive.clone();
+    let mut mixed_negative = primary_set.negative.clone();
 
-        // Append a random affirmation from the secondary mood
-        if !secondary_set.positive.is_empty() {
-            let idx = fastrand::usize(..secondary_set.positive.len());
-            if let Some(secondary_affirmation) = secondary_set.positive.get(idx) {
-                // Find a random primary affirmation to append to
-                if !mixed_positive.is_empty() {
-                    let primary_idx = fastrand::usize(..mixed_positive.len());
-                    let _ = std::fmt::Write::write_fmt(
-                        &mut mixed_positive[primary_idx],
-                        format_args!(" {}", secondary_affirmation),
-                    );
-                }
+    // Append a random affirmation from the secondary mood
+    if !secondary_set.positive.is_empty() {
+        let idx = fastrand::usize(..secondary_set.positive.len());
+        if let Some(secondary_affirmation) = secondary_set.positive.get(idx) {
+            // Find a random primary affirmation to append to
+            if !mixed_positive.is_empty() {
+                let primary_idx = fastrand::usize(..mixed_positive.len());
+                let _ = std::fmt::Write::write_fmt(&mut mixed_positive[primary_idx], format_args!(" {}", secondary_affirmation));
             }
         }
+    }
 
-        if !secondary_set.negative.is_empty() {
-            let idx = fastrand::usize(..secondary_set.negative.len());
-            if let Some(secondary_affirmation) = secondary_set.negative.get(idx) {
-                // Find a random primary affirmation to append to
-                if !mixed_negative.is_empty() {
-                    let primary_idx = fastrand::usize(..mixed_negative.len());
-                    let _ = std::fmt::Write::write_fmt(
-                        &mut mixed_negative[primary_idx],
-                        format_args!(" {}", secondary_affirmation),
-                    );
-                }
+    if !secondary_set.negative.is_empty() {
+        let idx = fastrand::usize(..secondary_set.negative.len());
+        if let Some(secondary_affirmation) = secondary_set.negative.get(idx) {
+            // Find a random primary affirmation to append to
+            if !mixed_negative.is_empty() {
+                let primary_idx = fastrand::usize(..mixed_negative.len());
+                let _ = std::fmt::Write::write_fmt(&mut mixed_negative[primary_idx], format_args!(" {}", secondary_affirmation));
             }
         }
 
@@ -197,6 +209,9 @@ pub fn load_custom_affirmations_with_mood_mixing<P: AsRef<Path>>(
                 negative: mixed.negative().to_vec(),
             }));
         }
+
+        // Fallback: use the already parsed file
+        return Some(AffirmationData::Owned(affirmations_from_file_owned(&file, Some(mood))));
     }
 
     // Fall back to regular mood loading
@@ -402,11 +417,11 @@ mod tests {
             "mixed negative should not be empty"
         );
 
-        // Test with probability 0.0 - should return original affirmations
+        // Test with probability 0.0 - should return None (optimized behavior)
         let no_mix = mix_moods(&EMBEDDED_AFFIRMATIONS, "ominous", "thirsty", 0.0);
         assert!(
-            no_mix.is_some(),
-            "mix_moods should work with 0.0 probability"
+            no_mix.is_none(),
+            "mix_moods should return None with 0.0 probability to save allocs"
         );
     }
 
