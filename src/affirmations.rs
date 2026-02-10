@@ -4,8 +4,6 @@ use std::sync::LazyLock;
 
 use serde::Deserialize;
 
-// Removed crate::utils::AffirmationData import
-
 #[derive(Debug, Deserialize, Clone)]
 struct MoodSet {
     positive: Vec<String>,
