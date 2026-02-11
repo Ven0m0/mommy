@@ -118,6 +118,7 @@ pub fn mommy() -> Result<i32, Box<dyn std::error::Error>> {
         return Ok(2); // Special exit code for recursion overflow
     }
 
+
     let args: Vec<String> = env::args().collect();
     if args.len() < 2 {
         let role = &config.binary_info.role;
@@ -246,11 +247,11 @@ pub fn mommy() -> Result<i32, Box<dyn std::error::Error>> {
         return Ok(exit_code);
     }
 
-    // Skip if success and we only want negative affirmations
+    // Optimization: If the command succeeded and we only want to show negative affirmations,
+    // we can skip loading affirmations entirely.
     if exit_code == 0 && config.only_negative {
         return Ok(exit_code);
     }
-
     // Use pre-parsed moods vector
     let selected_mood = random_vec_pick(&config.moods).unwrap_or("chill");
 
