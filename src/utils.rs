@@ -110,16 +110,15 @@ mod tests {
     }
 
     #[test]
-    fn test_reproduce_bug() {
+    fn test_unknown_placeholder_preservation() {
         let mut config = load_config();
         config.roles = vec!["mommy".to_string()];
 
         // This template contains an unknown placeholder {unknown}
-        // The bug causes the text before {unknown} to be duplicated.
+        // Regression test: ensure text before {unknown} is NOT duplicated.
         let template = "Hello {unknown} world";
         let result = fill_template(template, &config);
 
         assert_eq!(result, "Hello {unknown} world");
     }
-
 }

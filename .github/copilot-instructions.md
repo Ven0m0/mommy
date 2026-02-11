@@ -314,3 +314,189 @@ For content repositories and documentation:
 3. **Add documentation**: Include docstrings/comments for complex logic
 4. **Handle errors**: Include proper error handling
 5. **Consider edge cases**: Account for null, empty, and boundary conditions
+
+---
+
+## Project-Specific: mommy CLI Tool
+
+### Project Context
+
+**mommy** (v0.1.6) is a Rust terminal affirmation tool with dual-mode operation:
+- Shell wrapper: `mommy <command>`
+- Cargo subcommand: `cargo mommy <command>`
+
+**Key Constraints:**
+- 24 unit tests must always pass
+- Binary size target: ~400KB (stripped)
+- Zero external runtime dependencies
+- Stateless execution (no config files)
+
+### Mommy-Specific Rust Patterns
+
+**Environment Variables (Dual-Prefix System):**
+```rust
+// Shell mode: SHELL_MOMMYS_*
+// Cargo mode: CARGO_MOMMYS_*
+let prefix = if is_cargo_subcommand() {
+    "CARGO_MOMMYS_"
+} else {
+    "SHELL_MOMMYS_"
+};
+
+let value = env::var(format!("{prefix}VARIABLE"))
+    .unwrap_or_else(|_| "default".to_string());
+```
+
+**Thread-Safe Environment Variable Tests:**
+```rust
+#[cfg(test)]
+mod tests {
+    use std::sync::{LazyLock, Mutex};
+
+    static ENV_LOCK: LazyLock<Mutex<()>> = LazyLock::new(|| Mutex::new(()));
+
+    #[test]
+    fn test_env_var() {
+        let _guard = ENV_LOCK.lock();
+        env::set_var("TEST_VAR", "value");
+        // test code
+        env::remove_var("TEST_VAR");
+    }
+}
+```
+
+**Deterministic Random Testing:**
+```rust
+#[test]
+fn test_random_selection() {
+    fastrand::seed(42);  // Reproducible results
+    let result = get_random_affirmation();
+    assert_eq!(result, "expected value");
+}
+```
+
+**Zero-Allocation Terminal Colors:**
+```rust
+use owo_colors::OwoColorize;
+println!("{}", message.bright_magenta().bold());
+```
+
+**Embedded Assets:**
+```rust
+// Compile-time embedding
+const AFFIRMATIONS_JSON: &str = include_str!("../assets/affirmations.json");
+```
+
+### Module Responsibilities
+
+| Module | Purpose | Key Functions |
+|--------|---------|---------------|
+| `src/main.rs` | Entry routing | Minimal (414 bytes) |
+| `src/mommy.rs` | Core logic | Command execution, role detection |
+| `src/config.rs` | Configuration | Env var parsing with dual-prefix |
+| `src/affirmations.rs` | Mood system | JSON loading, template selection |
+| `src/color.rs` | Styling | ANSI color parsing |
+| `src/utils.rs` | Templates | `{roles}`, `{pronouns}`, etc. substitution |
+
+### Design Anti-Patterns to Avoid
+
+**❌ Don't Add:**
+- Heavy dependencies (clap, tokio, anyhow)
+- Config files (use env vars only)
+- Premature abstractions (traits for <3 uses)
+- Custom error types (use `Result<T>` with `Box<dyn Error>`)
+- Backwards compatibility hacks (delete unused code)
+
+**✅ Do Add:**
+- Co-located tests in source files
+- Tests with `ENV_LOCK` for env var safety
+- Deterministic tests with `fastrand::seed(42)`
+- Documentation for public APIs
+- Examples in doc comments
+
+### Pre-commit Requirements
+
+```bash
+cargo test                  # All 24 tests must pass
+cargo clippy -- -D warnings # Zero warnings (CI enforced)
+cargo fmt                   # Format code
+```
+
+### Template System
+
+Supported placeholders in affirmation strings:
+- `{roles}` - Role name(s) from config
+- `{pronouns}` - Pronoun set
+- `{little}` - Term of endearment
+- `{emotes}` - Emoji/emoticons
+
+### Build Configuration
+
+```toml
+[profile.release]
+codegen-units = 1         # Single codegen unit
+strip = true              # Remove debug symbols
+lto = "fat"               # Full link-time optimization
+opt-level = 3             # Maximum optimization
+panic = "abort"           # Smaller binary size
+```
+
+### Common Tasks for Code Generation
+
+**Adding a Config Variable:**
+1. Add field to `Config` struct in `src/config.rs`
+2. Parse from env var in `Config::from_env()`
+3. Add test with `ENV_LOCK` in `config::tests`
+4. Update `README.md` env vars table
+
+**Adding a New Mood:**
+1. Edit `assets/affirmations.json`
+2. Add validation test in `affirmations::tests`
+3. Rebuild to embed new data
+
+**Adding a Color Style:**
+1. Update parsing in `src/color.rs`
+2. Add test case in `color::tests`
+3. Use `owo_colors` for styling
+
+### Architecture Principles
+
+1. **Stateless Execution** - No persistent state or config files
+2. **Embedded Assets** - All data compiled into binary at build time
+3. **Minimal Dependencies** - Only 4 runtime crates
+4. **Simple Design** - No abstractions for <3 similar uses
+5. **Fast Execution** - Zero-allocation where possible
+6. **Thread-Safe Tests** - Use `ENV_LOCK` for env var isolation
+
+### Security Context
+
+- Shell commands from CLI args are user-trusted (appropriate for CLI tool)
+- File paths from env vars are user-controlled (intentional feature)
+- No SQL, no web endpoints, no external network calls
+- Commands executed via `bash -c` (user authentication boundary)
+
+### Quick Reference
+
+```bash
+# Development
+cargo build -r              # Release build (~400KB)
+cargo run -- ls -la         # Test shell mode
+cargo run --bin cargo-mommy build  # Test cargo mode
+
+# Testing
+cargo test                  # Run all 24 tests
+cargo test config::         # Specific module
+cargo test -- --nocapture   # Show output
+
+# Cross-compilation
+cargo build -r --target x86_64-unknown-linux-musl
+
+# Release
+git tag -a v0.1.7 -m "Release v0.1.7"
+git push origin v0.1.7
+```
+
+For comprehensive documentation, see:
+- **User Guide:** `README.md`
+- **AI Agents:** `AGENTS.md` (full technical reference)
+- **Roadmap:** `PLAN.md` (47 planned features)

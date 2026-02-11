@@ -5,17 +5,13 @@ SCCACHE_DIRECT = "true"
 
 [build]
 incremental = false
-# build-std = false                              # do not build the std library. has precedence over xargo
-# xargo = true                                   # enable the use of xargo by default
-target = "x86_64-unknown-linux-gnu"              # use this target if none is explicitly provided
+target = "x86_64-unknown-linux-gnu"
 
 [target.x86_64-unknown-linux-gnu]
 linker = "clang"
 rustflags = [
   "-C",
   "target-cpu=native",
-  "-C",
-  "link-arg=-fuse-ld=lld",
   "-C",
   "llvm-args=-enable-dfa-jump-thread",
 ]
