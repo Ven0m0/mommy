@@ -118,7 +118,6 @@ pub fn mommy() -> Result<i32, Box<dyn std::error::Error>> {
         return Ok(2); // Special exit code for recursion overflow
     }
 
-
     let args: Vec<String> = env::args().collect();
     if args.len() < 2 {
         let role = &config.binary_info.role;
@@ -247,8 +246,8 @@ pub fn mommy() -> Result<i32, Box<dyn std::error::Error>> {
         return Ok(exit_code);
     }
 
-    // Optimization: If the command succeeded and we only want to show negative affirmations,
-    // we can skip loading affirmations entirely.
+    // Optimization: If the command succeeded and we only want to show negative
+    // affirmations, we can skip loading affirmations entirely.
     if exit_code == 0 && config.only_negative {
         return Ok(exit_code);
     }

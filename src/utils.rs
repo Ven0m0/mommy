@@ -32,11 +32,13 @@ pub fn fill_template(template: &str, config: &ConfigMommy) -> String {
     while i < bytes.len() {
         if bytes[i] == b'{' {
             // Add everything before this '{', converting newlines to spaces
-            for ch in template[last_end..i].chars() {
-                if ch == '\n' {
+            let part = &template[last_end..i];
+            let mut parts = part.split('\n');
+            if let Some(first) = parts.next() {
+                result.push_str(first);
+                for subpart in parts {
                     result.push(' ');
-                } else {
-                    result.push(ch);
+                    result.push_str(subpart);
                 }
             }
 
@@ -70,11 +72,13 @@ pub fn fill_template(template: &str, config: &ConfigMommy) -> String {
 
     // Add any remaining text after the last replacement, converting newlines to
     // spaces
-    for ch in template[last_end..].chars() {
-        if ch == '\n' {
+    let part = &template[last_end..];
+    let mut parts = part.split('\n');
+    if let Some(first) = parts.next() {
+        result.push_str(first);
+        for subpart in parts {
             result.push(' ');
-        } else {
-            result.push(ch);
+            result.push_str(subpart);
         }
     }
 
