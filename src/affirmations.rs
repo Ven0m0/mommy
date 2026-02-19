@@ -1,6 +1,4 @@
-use std::fs;
-use std::path::Path;
-use std::sync::LazyLock;
+use std::{fs, path::Path, sync::LazyLock};
 
 use serde::Deserialize;
 
@@ -29,6 +27,7 @@ impl AffirmationsOwned {
     pub fn positive(&self) -> &[String] {
         &self.positive
     }
+
     pub fn negative(&self) -> &[String] {
         &self.negative
     }
@@ -107,28 +106,12 @@ pub fn load_affirmations_with_mood(mood: &str) -> Option<AffirmationData<'static
     )))
 }
 
-fn parse_affirmations(json_str: &str, mood: Option<&str>) -> Option<AffirmationsOwned> {
-    let file: AffirmationsFile = serde_json::from_str(json_str).ok()?;
-    Some(affirmations_from_file_owned(&file, mood))
-}
-
-pub fn load_custom_affirmations_with_mood<P: AsRef<Path>>(
-    path: P,
-    mood: &str,
-) -> Option<AffirmationData<'static>> {
-    let json_str = fs::read_to_string(&path).ok()?;
-    Some(AffirmationData::Owned(parse_affirmations(
-        &json_str,
-        Some(mood),
-    )?))
-}
-
-fn mix_moods(
-    file: &AffirmationsFile,
+fn mix_moods<'a>(
+    file: &'a AffirmationsFile,
     primary_mood: &str,
     secondary_mood: &str,
     probability: f32,
-) -> Option<AffirmationsOwned> {
+) -> Option<AffirmationData<'a>> {
     // Check probability first to avoid cloning if not mixing
     if fastrand::f32() >= probability {
         return None;
@@ -147,7 +130,10 @@ fn mix_moods(
             // Find a random primary affirmation to append to
             if !mixed_positive.is_empty() {
                 let primary_idx = fastrand::usize(..mixed_positive.len());
-                let _ = std::fmt::Write::write_fmt(&mut mixed_positive[primary_idx], format_args!(" {}", secondary_affirmation));
+                let _ = std::fmt::Write::write_fmt(
+                    &mut mixed_positive[primary_idx],
+                    format_args!(" {}", secondary_affirmation),
+                );
             }
         }
     }
@@ -158,7 +144,10 @@ fn mix_moods(
             // Find a random primary affirmation to append to
             if !mixed_negative.is_empty() {
                 let primary_idx = fastrand::usize(..mixed_negative.len());
-                let _ = std::fmt::Write::write_fmt(&mut mixed_negative[primary_idx], format_args!(" {}", secondary_affirmation));
+                let _ = std::fmt::Write::write_fmt(
+                    &mut mixed_negative[primary_idx],
+                    format_args!(" {}", secondary_affirmation),
+                );
             }
         }
 
@@ -211,7 +200,10 @@ pub fn load_custom_affirmations_with_mood_mixing<P: AsRef<Path>>(
         }
 
         // Fallback: use the already parsed file
-        return Some(AffirmationData::Owned(affirmations_from_file_owned(&file, Some(mood))));
+        return Some(AffirmationData::Owned(affirmations_from_file_owned(
+            &file,
+            Some(mood),
+        )));
     }
 
     // Fall back to regular mood loading
