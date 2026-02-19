@@ -113,7 +113,7 @@ fn execute_command(
     filtered_args: &[&str],
 ) -> Result<i32, Box<dyn std::error::Error>> {
     if config.needy {
-        let code_str = filtered_args.first().ok_or("Missing exit code")?;
+        let code_str = filtered_args.first().ok_or_else(|| "Missing exit code".to_string())?;
         code_str.parse().map_err(|_| {
             format!(
                 "Invalid exit code '{}'. Expected a number (e.g., 0 or 1)",
