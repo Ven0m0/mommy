@@ -200,7 +200,6 @@ pub fn load_affirmations_with_mood_mixing(
 }
 
 /// Load custom affirmations with optional mood mixing support
-#[allow(dead_code)]
 pub fn load_custom_affirmations_with_mood_mixing<P: AsRef<Path>>(
     path: P,
     mood: &str,
