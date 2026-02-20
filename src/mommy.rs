@@ -4,7 +4,7 @@ use crate::{
         AffirmationData,
     },
     color::random_style_pick,
-    config::load_config,
+    config::{load_config, ConfigMommy},
     utils::{fill_template, graceful_print, random_vec_pick},
 };
 use owo_colors::OwoColorize;
@@ -82,6 +82,150 @@ fn perform_role_transformation(
     Ok(())
 }
 
+fn execute_command(
+    config: &ConfigMommy,
+    filtered_args: &[&str],
+) -> Result<i32, Box<dyn std::error::Error>> {
+    if config.needy {
+        let code_str = filtered_args.first().ok_or_else(|| "Missing exit code".to_string())?;
+        code_str.parse().map_err(|_| {
+            format!(
+                "Invalid exit code '{}'. Expected a number (e.g., 0 or 1)",
+                code_str
+            )
+            .into()
+        })
+    } else if config.binary_info.is_cargo_subcommand {
+        // Running as cargo subcommand - execute cargo with the provided args
+        if filtered_args.is_empty() {
+            eprintln!("No cargo command provided");
+            exit(1);
+        }
+
+        // Increment recursion counter
+        let new_recursion = config.recursion_limit + 1;
+
+        let status = Command::new("cargo")
+            .args(filtered_args)
+            .env("CARGO_MOMMY_RECURSION_LIMIT", new_recursion.to_string())
+            .status()?;
+
+        Ok(status.code().unwrap_or(1))
+    } else {
+        // Running as shell command wrapper
+        // Direct join without intermediate Vec allocation
+        let raw_command = filtered_args.join(" ");
+        let run_command = if let Some(ref aliases_path) = config.aliases {
+            // Removed unnecessary eval; execute directly instead to avoid extra shell
+            // parsing
+            format!(
+                "shopt -s expand_aliases; source \"{}\"; {}",
+                aliases_path, raw_command
+            )
+        } else {
+            raw_command
+        };
+
+        let status = Command::new("bash").arg("-c").arg(&run_command).status()?;
+
+        Ok(status.code().unwrap_or(1))
+    }
+}
+
+#[cfg(feature = "beg")]
+fn handle_begging(
+    command_args: &[String],
+    config: &ConfigMommy,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let has_please = command_args.iter().any(|arg| arg == "please");
+    let mut state = crate::state::State::load()?;
+    if state.mood == crate::state::Mood::Angry {
+        if has_please {
+            state.mood = crate::state::Mood::Chill;
+            if let Err(e) = state.save() {
+                eprintln!("mommy failed to remember how she feels: {}", e);
+            }
+            let output = fill_template("{roles} forgives {pronouns} {little}~ {emotes}", config);
+            let styled_output = output.style(random_style_pick(config));
+            graceful_print(styled_output);
+        } else {
+            let output = fill_template(
+                "{roles} is waiting for {pronouns} {little} to say please~ {emotes}",
+                config,
+            );
+            let styled_output = output.style(random_style_pick(config));
+            graceful_print(styled_output);
+            exit(1);
+        }
+    }
+    Ok(())
+}
+
+#[cfg(feature = "beg")]
+fn update_begging_state(exit_code: i32) -> Result<(), Box<dyn std::error::Error>> {
+    let mut state = crate::state::State::load()?;
+    state.mood = if exit_code == 0 {
+        crate::state::Mood::Chill
+    } else {
+        crate::state::Mood::Angry
+    };
+    if let Err(e) = state.save() {
+        eprintln!("mommy failed to remember how she feels: {}", e);
+    }
+    Ok(())
+}
+
+fn print_affirmation(
+    exit_code: i32,
+    config: &ConfigMommy,
+) -> Result<(), Box<dyn std::error::Error>> {
+    // Skip output if quiet mode is enabled
+    if config.quiet {
+        return Ok(());
+    }
+
+    // Optimization: If the command succeeded and we only want to show negative
+    // affirmations, we can skip loading affirmations entirely.
+    if exit_code == 0 && config.only_negative {
+        return Ok(());
+    }
+    // Use pre-parsed moods vector
+    let selected_mood = random_vec_pick(&config.moods).unwrap_or("chill");
+
+    let affirmations: Option<AffirmationData> = if let Some(ref path) = config.affirmations {
+        load_custom_affirmations_with_mood_mixing(path, selected_mood, config.mood_mixing)
+    } else {
+        load_affirmations_with_mood_mixing(selected_mood, config.mood_mixing)
+    };
+
+    // Use const str instead of Vec allocation
+    const AFFIRMATIONS_ERROR: &str = "{roles} failed to load any affirmations, {little}~ {emotes}";
+
+    let (template, _affirmation_type) = match (exit_code == 0, config.only_negative) {
+        (true, false) => (
+            choose_template(
+                affirmations.as_ref().map(|aff| aff.positive()),
+                AFFIRMATIONS_ERROR,
+            ),
+            "positive",
+        ),
+        (false, _) => (
+            choose_template(
+                affirmations.as_ref().map(|aff| aff.negative()),
+                AFFIRMATIONS_ERROR,
+            ),
+            "negative",
+        ),
+        _ => return Ok(()),
+    };
+
+    let output = fill_template(template, config);
+    let styled_output = output.style(random_style_pick(config));
+    graceful_print(styled_output);
+
+    Ok(())
+}
+
 pub fn mommy() -> Result<i32, Box<dyn std::error::Error>> {
     let mut config = load_config();
     let is_cargo_command = config.binary_info.is_cargo_subcommand;
@@ -125,30 +269,7 @@ pub fn mommy() -> Result<i32, Box<dyn std::error::Error>> {
 
     // Handle "please" for begging mode (if enabled)
     #[cfg(feature = "beg")]
-    {
-        let has_please = command_args.iter().any(|arg| arg == "please");
-        let mut state = crate::state::State::load()?;
-        if state.mood == crate::state::Mood::Angry {
-            if has_please {
-                state.mood = crate::state::Mood::Chill;
-                if let Err(e) = state.save() {
-                    eprintln!("mommy failed to remember how she feels: {}", e);
-                }
-                let output =
-                    fill_template("{roles} forgives {pronouns} {little}~ {emotes}", &config);
-                let styled_output = output.style(random_style_pick(&config));
-                graceful_print(styled_output);
-            } else {
-                let output = fill_template(
-                    "{roles} is waiting for {pronouns} {little} to say please~ {emotes}",
-                    &config,
-                );
-                let styled_output = output.style(random_style_pick(&config));
-                graceful_print(styled_output);
-                exit(1);
-            }
-        }
-    }
+    handle_begging(command_args, &config)?;
 
     // Filter out "please" and convert to &str in a single pass
     let filtered_args: Vec<&str> = command_args
@@ -157,107 +278,13 @@ pub fn mommy() -> Result<i32, Box<dyn std::error::Error>> {
         .map(|s| s.as_str())
         .collect();
 
-    let exit_code: i32 = if config.needy {
-        let code_str = filtered_args.first().ok_or("Missing exit code")?;
-        code_str.parse().map_err(|_| {
-            format!(
-                "Invalid exit code '{}'. Expected a number (e.g., 0 or 1)",
-                code_str
-            )
-        })?
-    } else if is_cargo_command {
-        // Running as cargo subcommand - execute cargo with the provided args
-        if filtered_args.is_empty() {
-            eprintln!("No cargo command provided");
-            exit(1);
-        }
-
-        // Increment recursion counter
-        let new_recursion = config.recursion_limit + 1;
-
-        let status = Command::new("cargo")
-            .args(&filtered_args)
-            .env("CARGO_MOMMY_RECURSION_LIMIT", new_recursion.to_string())
-            .status()?;
-
-        status.code().unwrap_or(1)
-    } else {
-        // Running as shell command wrapper
-        // Direct join without intermediate Vec allocation
-        let raw_command = filtered_args.join(" ");
-        let run_command = if let Some(ref aliases_path) = config.aliases {
-            // Removed unnecessary eval; execute directly instead to avoid extra shell
-            // parsing
-            format!(
-                "shopt -s expand_aliases; source \"{}\"; {}",
-                aliases_path, raw_command
-            )
-        } else {
-            raw_command
-        };
-
-        let status = Command::new("bash").arg("-c").arg(&run_command).status()?;
-
-        status.code().unwrap_or(1)
-    };
+    let exit_code = execute_command(&config, &filtered_args)?;
 
     // Update begging state (if enabled)
     #[cfg(feature = "beg")]
-    {
-        let mut state = crate::state::State::load()?;
-        state.mood = if exit_code == 0 {
-            crate::state::Mood::Chill
-        } else {
-            crate::state::Mood::Angry
-        };
-        if let Err(e) = state.save() {
-            eprintln!("mommy failed to remember how she feels: {}", e);
-        }
-    }
+    update_begging_state(exit_code)?;
 
-    // Skip output if quiet mode is enabled
-    if config.quiet {
-        return Ok(exit_code);
-    }
-
-    // Optimization: If the command succeeded and we only want to show negative
-    // affirmations, we can skip loading affirmations entirely.
-    if exit_code == 0 && config.only_negative {
-        return Ok(exit_code);
-    }
-    // Use pre-parsed moods vector
-    let selected_mood = random_vec_pick(&config.moods).unwrap_or("chill");
-
-    let affirmations: Option<AffirmationData> = if let Some(ref path) = config.affirmations {
-        load_custom_affirmations_with_mood_mixing(path, selected_mood, config.mood_mixing)
-    } else {
-        load_affirmations_with_mood_mixing(selected_mood, config.mood_mixing)
-    };
-
-    // Use const str instead of Vec allocation
-    const AFFIRMATIONS_ERROR: &str = "{roles} failed to load any affirmations, {little}~ {emotes}";
-
-    let (template, _affirmation_type) = match (exit_code == 0, config.only_negative) {
-        (true, false) => (
-            choose_template(
-                affirmations.as_ref().map(|aff| aff.positive()),
-                AFFIRMATIONS_ERROR,
-            ),
-            "positive",
-        ),
-        (false, _) => (
-            choose_template(
-                affirmations.as_ref().map(|aff| aff.negative()),
-                AFFIRMATIONS_ERROR,
-            ),
-            "negative",
-        ),
-        _ => return Ok(exit_code),
-    };
-
-    let output = fill_template(template, &config);
-    let styled_output = output.style(random_style_pick(&config));
-    graceful_print(styled_output);
+    print_affirmation(exit_code, &config)?;
 
     Ok(exit_code)
 }

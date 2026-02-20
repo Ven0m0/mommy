@@ -59,6 +59,16 @@ impl<'a> AffirmationData<'a> {
             Self::Borrowed(b) => b.negative,
         }
     }
+
+    pub fn into_owned(self) -> AffirmationData<'static> {
+        match self {
+            Self::Owned(o) => AffirmationData::Owned(o),
+            Self::Borrowed(b) => AffirmationData::Owned(AffirmationsOwned {
+                positive: b.positive.to_vec(),
+                negative: b.negative.to_vec(),
+            }),
+        }
+    }
 }
 
 fn get_mood_set<'a>(file: &'a AffirmationsFile, mood: Option<&str>) -> Option<&'a MoodSet> {
@@ -193,10 +203,7 @@ pub fn load_custom_affirmations_with_mood_mixing<P: AsRef<Path>>(
     if enable_mixing && mood == "ominous" {
         // Mix ominous with thirsty (20% chance)
         if let Some(mixed) = mix_moods(&file, "ominous", "thirsty", 0.2) {
-            return Some(AffirmationData::Owned(AffirmationsOwned {
-                positive: mixed.positive().to_vec(),
-                negative: mixed.negative().to_vec(),
-            }));
+            return Some(mixed.into_owned());
         }
 
         // Fallback: use the already parsed file
