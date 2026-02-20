@@ -43,42 +43,6 @@ fn check_role_transformation(args: &[String]) -> Option<&str> {
 }
 
 /// Perform role transformation by copying the binary
-#[cfg(unix)]
-fn perform_role_transformation(
-    new_role: &str,
-    binary_info: &crate::config::BinaryInfo,
-) -> Result<(), Box<dyn std::error::Error>> {
-    use std::{fs, os::unix::fs::PermissionsExt};
-
-    let parent = binary_info
-        .path
-        .parent()
-        .ok_or("Cannot get parent directory")?;
-
-    // Determine the new binary name
-    let new_name = if binary_info.is_cargo_subcommand {
-        format!("cargo-{}", new_role)
-    } else {
-        new_role.to_string()
-    };
-
-    let new_path = parent.join(&new_name);
-
-    // Copy the binary
-    fs::copy(&binary_info.path, &new_path)?;
-
-    // Make it executable
-    let mut perms = fs::metadata(&new_path)?.permissions();
-    perms.set_mode(0o755);
-    fs::set_permissions(&new_path, perms)?;
-
-    println!("Created new binary: {}", new_path.display());
-    println!("You can now use: {}", new_name);
-
-    Ok(())
-}
-
-#[cfg(not(unix))]
 fn perform_role_transformation(
     new_role: &str,
     binary_info: &crate::config::BinaryInfo,
@@ -91,16 +55,26 @@ fn perform_role_transformation(
         .ok_or("Cannot get parent directory")?;
 
     // Determine the new binary name
+    let suffix = std::env::consts::EXE_SUFFIX;
     let new_name = if binary_info.is_cargo_subcommand {
-        format!("cargo-{}.exe", new_role)
+        format!("cargo-{}{}", new_role, suffix)
     } else {
-        format!("{}.exe", new_role)
+        format!("{}{}", new_role, suffix)
     };
 
     let new_path = parent.join(&new_name);
 
     // Copy the binary
     fs::copy(&binary_info.path, &new_path)?;
+
+    // Make it executable (Unix only)
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mut perms = fs::metadata(&new_path)?.permissions();
+        perms.set_mode(0o755);
+        fs::set_permissions(&new_path, perms)?;
+    }
 
     println!("Created new binary: {}", new_path.display());
     println!("You can now use: {}", new_name);
