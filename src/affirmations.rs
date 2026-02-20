@@ -106,24 +106,6 @@ pub fn load_affirmations_with_mood(mood: &str) -> Option<AffirmationData<'static
     )))
 }
 
-#[allow(dead_code)]
-fn parse_affirmations(json_str: &str, mood: Option<&str>) -> Option<AffirmationsOwned> {
-    let file: AffirmationsFile = serde_json::from_str(json_str).ok()?;
-    Some(affirmations_from_file_owned(&file, mood))
-}
-
-#[allow(dead_code)]
-pub fn load_custom_affirmations_with_mood<P: AsRef<Path>>(
-    path: P,
-    mood: &str,
-) -> Option<AffirmationData<'static>> {
-    let json_str = fs::read_to_string(&path).ok()?;
-    Some(AffirmationData::Owned(parse_affirmations(
-        &json_str,
-        Some(mood),
-    )?))
-}
-
 fn mix_moods<'a>(
     file: &'a AffirmationsFile,
     primary_mood: &str,

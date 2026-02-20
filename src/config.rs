@@ -4,8 +4,6 @@ use std::{env, path::PathBuf};
 #[derive(Debug, Clone)]
 pub struct BinaryInfo {
     pub path: PathBuf,
-    #[allow(dead_code)]
-    pub name: String,
     pub role: String,
     pub is_cargo_subcommand: bool,
 }
@@ -31,7 +29,6 @@ impl BinaryInfo {
 
         BinaryInfo {
             path,
-            name,
             role,
             is_cargo_subcommand,
         }
