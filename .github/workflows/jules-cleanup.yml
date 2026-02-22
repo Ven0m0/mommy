@@ -1,13 +1,19 @@
 name: Weekly Codebase Cleanup
 on:
   workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+env:
+  CARGO_TERM_COLOR: always
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 jobs:
   cleanup:
-    runs-on: ubuntu-slim
-    permissions:
-      contents: read
-      actions: read
+    runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
       - name: Invoke Jules for Cleanup
         uses: BeksOmega/jules-action@v1.0.0
         with:
