@@ -288,3 +288,62 @@ pub fn mommy() -> Result<i32, Box<dyn std::error::Error>> {
 
     Ok(exit_code)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_check_role_transformation_middle() {
+        let args = vec![
+            "mommy".to_string(),
+            "i".to_string(),
+            "mean".to_string(),
+            "daddy".to_string(),
+        ];
+        assert_eq!(check_role_transformation(&args), Some("daddy"));
+    }
+
+    #[test]
+    fn test_check_role_transformation_start() {
+        let args = vec!["i".to_string(), "mean".to_string(), "daddy".to_string()];
+        assert_eq!(check_role_transformation(&args), Some("daddy"));
+    }
+
+    #[test]
+    fn test_check_role_transformation_no_match() {
+        let args = vec!["ls".to_string(), "-la".to_string()];
+        assert_eq!(check_role_transformation(&args), None);
+    }
+
+    #[test]
+    fn test_check_role_transformation_incomplete() {
+        let args = vec!["i".to_string(), "mean".to_string()];
+        assert_eq!(check_role_transformation(&args), None);
+    }
+
+    #[test]
+    fn test_check_role_transformation_wrong_pattern() {
+        let args = vec!["i".to_string(), "think".to_string(), "daddy".to_string()];
+        assert_eq!(check_role_transformation(&args), None);
+    }
+
+    #[test]
+    fn test_check_role_transformation_empty() {
+        let args: Vec<String> = vec![];
+        assert_eq!(check_role_transformation(&args), None);
+    }
+
+    #[test]
+    fn test_check_role_transformation_multiple() {
+        let args = vec![
+            "i".to_string(),
+            "mean".to_string(),
+            "daddy".to_string(),
+            "i".to_string(),
+            "mean".to_string(),
+            "mommy".to_string(),
+        ];
+        assert_eq!(check_role_transformation(&args), Some("daddy"));
+    }
+}
