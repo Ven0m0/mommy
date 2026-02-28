@@ -48,6 +48,14 @@ fn perform_role_transformation(
     binary_info: &crate::config::BinaryInfo,
 ) -> Result<(), Box<dyn std::error::Error>> {
     use std::fs;
+    use std::path::{Component, Path};
+
+    // Validate new_role to prevent path traversal
+    let mut components = Path::new(new_role).components();
+    match (components.next(), components.next()) {
+        (Some(Component::Normal(_)), None) => {} // Exactly one normal component
+        _ => return Err("Invalid role name: must be a single name without path separators or parent directory references".into()),
+    }
 
     let parent = binary_info
         .path
