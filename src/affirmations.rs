@@ -132,35 +132,27 @@ fn mix_moods<'a>(
 
     let mut mixed_positive = primary_set.positive.clone();
     let mut mixed_negative = primary_set.negative.clone();
+    let mut changed = false;
 
-    // Append a random affirmation from the secondary mood
-    if !secondary_set.positive.is_empty() {
-        let idx = fastrand::usize(..secondary_set.positive.len());
-        if let Some(secondary_affirmation) = secondary_set.positive.get(idx) {
-            // Find a random primary affirmation to append to
-            if !mixed_positive.is_empty() {
-                let primary_idx = fastrand::usize(..mixed_positive.len());
+    let mut mix = |source: &[String], target: &mut [String]| {
+        if !source.is_empty() && !target.is_empty() {
+            let idx = fastrand::usize(..source.len());
+            if let Some(secondary_affirmation) = source.get(idx) {
+                let primary_idx = fastrand::usize(..target.len());
                 let _ = std::fmt::Write::write_fmt(
-                    &mut mixed_positive[primary_idx],
+                    &mut target[primary_idx],
                     format_args!(" {}", secondary_affirmation),
                 );
+                return true;
             }
         }
-    }
+        false
+    };
 
-    if !secondary_set.negative.is_empty() {
-        let idx = fastrand::usize(..secondary_set.negative.len());
-        if let Some(secondary_affirmation) = secondary_set.negative.get(idx) {
-            // Find a random primary affirmation to append to
-            if !mixed_negative.is_empty() {
-                let primary_idx = fastrand::usize(..mixed_negative.len());
-                let _ = std::fmt::Write::write_fmt(
-                    &mut mixed_negative[primary_idx],
-                    format_args!(" {}", secondary_affirmation),
-                );
-            }
-        }
+    changed |= mix(&secondary_set.positive, &mut mixed_positive);
+    changed |= mix(&secondary_set.negative, &mut mixed_negative);
 
+    if changed {
         Some(AffirmationData::Owned(AffirmationsOwned {
             positive: mixed_positive,
             negative: mixed_negative,
