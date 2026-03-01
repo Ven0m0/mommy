@@ -121,17 +121,31 @@ fn execute_command(
         Ok(status.code().unwrap_or(1))
     } else {
         // Running as shell command wrapper
-        // Direct join without intermediate Vec allocation
-        let raw_command = filtered_args.join(" ");
         let run_command = if let Some(ref aliases_path) = config.aliases {
             // Removed unnecessary eval; execute directly instead to avoid extra shell
             // parsing
-            format!(
-                "shopt -s expand_aliases; source \"{}\"; {}",
-                aliases_path, raw_command
-            )
+            // Optimization: Build the command string in a single buffer with
+            // pre-calculated capacity to avoid intermediate .join() allocation.
+            let prefix = "shopt -s expand_aliases; source \"";
+            let mid = "\"; ";
+            let args_len: usize = filtered_args.iter().map(|s| s.len()).sum();
+            let total_spaces = filtered_args.len().saturating_sub(1);
+            let total_len = prefix.len() + aliases_path.len() + mid.len() + args_len + total_spaces;
+
+            let mut buf = String::with_capacity(total_len);
+            buf.push_str(prefix);
+            buf.push_str(aliases_path);
+            buf.push_str(mid);
+            for (i, arg) in filtered_args.iter().enumerate() {
+                if i > 0 {
+                    buf.push(' ');
+                }
+                buf.push_str(arg);
+            }
+            buf
         } else {
-            raw_command
+            // Simple join is already optimal here
+            filtered_args.join(" ")
         };
 
         let status = Command::new("bash").arg("-c").arg(&run_command).status()?;
