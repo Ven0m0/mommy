@@ -1,0 +1,23 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "f=$(jq -r '.tool_input.file_path // empty'); case \"$f\" in */src/*.rs) (cd /home/liveuser/mommy && cargo fmt) ;; esac 2>/dev/null || true",
+            "statusMessage": "cargo fmt",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "command": "f=$(jq -r '.tool_input.file_path // empty'); case \"$f\" in */src/*.rs) (cd /home/liveuser/mommy && cargo check --all-features --message-format=short) ;; esac 2>/dev/null || true",
+            "statusMessage": "cargo check --all-features",
+            "timeout": 60
+          }
+        ]
+      }
+    ]
+  }
+}
