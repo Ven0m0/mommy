@@ -5,7 +5,7 @@ use crate::{
     },
     color::random_style_pick,
     config::{load_config, ConfigMommy},
-    utils::{fill_template, graceful_print, random_vec_pick},
+    utils::{fill_template, graceful_print, random_vec_pick, shell_quote},
 };
 use owo_colors::OwoColorize;
 use std::{
@@ -29,6 +29,13 @@ fn choose_template<'a>(json_template: Option<&'a [String]>, default_template: &'
 /// Check if quiet mode is enabled from command line arguments
 fn is_quiet_mode_enabled(args: &[String]) -> bool {
     args.iter().any(|arg| arg == "--quiet" || arg == "-q")
+}
+
+/// Check if a string is a simple word safe for alias expansion
+fn is_safe_for_alias(s: &str) -> bool {
+    !s.is_empty()
+        && s.chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
 }
 
 /// Check if the command contains "i mean" for role transformation
@@ -95,7 +102,9 @@ fn execute_command(
     filtered_args: &[&str],
 ) -> Result<i32, Box<dyn std::error::Error>> {
     if config.needy {
-        let code_str = filtered_args.first().ok_or_else(|| "Missing exit code".to_string())?;
+        let code_str = filtered_args
+            .first()
+            .ok_or_else(|| "Missing exit code".to_string())?;
         code_str.parse().map_err(|_| {
             format!(
                 "Invalid exit code '{}'. Expected a number (e.g., 0 or 1)",
@@ -106,8 +115,7 @@ fn execute_command(
     } else if config.binary_info.is_cargo_subcommand {
         // Running as cargo subcommand - execute cargo with the provided args
         if filtered_args.is_empty() {
-            eprintln!("No cargo command provided");
-            exit(1);
+            return Err("No cargo command provided".into());
         }
 
         // Increment recursion counter
@@ -121,36 +129,54 @@ fn execute_command(
         Ok(status.code().unwrap_or(1))
     } else {
         // Running as shell command wrapper
-        let run_command = if let Some(ref aliases_path) = config.aliases {
-            // Removed unnecessary eval; execute directly instead to avoid extra shell
-            // parsing
-            // Optimization: Build the command string in a single buffer with
-            // pre-calculated capacity to avoid intermediate .join() allocation.
-            let prefix = "shopt -s expand_aliases; source \"";
-            let mid = "\"; ";
-            let args_len: usize = filtered_args.iter().map(|s| s.len()).sum();
-            let total_spaces = filtered_args.len().saturating_sub(1);
-            let total_len = prefix.len() + aliases_path.len() + mid.len() + args_len + total_spaces;
 
-            let mut buf = String::with_capacity(total_len);
-            buf.push_str(prefix);
-            buf.push_str(aliases_path);
-            buf.push_str(mid);
+        // Increment recursion counter
+        let new_recursion = config.recursion_limit + 1;
+
+        if let Some(ref aliases_path) = config.aliases {
+            // Use bash -c for alias support, but safely quote arguments to prevent
+            // injection. To allow alias expansion, we must use `eval` because
+            // aliases are expanded when a command is read, not when it is
+            // executed.
+            let mut cmd_to_eval = String::new();
+
             for (i, arg) in filtered_args.iter().enumerate() {
                 if i > 0 {
-                    buf.push(' ');
+                    cmd_to_eval.push(' ');
                 }
-                buf.push_str(arg);
+                if i == 0 && is_safe_for_alias(arg) {
+                    cmd_to_eval.push_str(arg);
+                } else {
+                    cmd_to_eval.push_str(&shell_quote(arg));
+                }
             }
-            buf
+
+            let run_command = format!(
+                "shopt -s expand_aliases; . {}; eval {}",
+                shell_quote(aliases_path),
+                shell_quote(&cmd_to_eval)
+            );
+
+            let status = Command::new("bash")
+                .arg("-c")
+                .arg(&run_command)
+                .env("SHELL_MOMMY_RECURSION_LIMIT", new_recursion.to_string())
+                .status()?;
+
+            Ok(status.code().unwrap_or(1))
         } else {
-            // Simple join is already optimal here
-            filtered_args.join(" ")
-        };
+            // No aliases needed - execute command directly without bash -c
+            if filtered_args.is_empty() {
+                return Err("No command provided".into());
+            }
 
-        let status = Command::new("bash").arg("-c").arg(&run_command).status()?;
+            let status = Command::new(filtered_args[0])
+                .args(&filtered_args[1..])
+                .env("SHELL_MOMMY_RECURSION_LIMIT", new_recursion.to_string())
+                .status()?;
 
-        Ok(status.code().unwrap_or(1))
+            Ok(status.code().unwrap_or(1))
+        }
     }
 }
 
