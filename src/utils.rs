@@ -86,7 +86,7 @@ pub fn fill_template(template: &str, config: &ConfigMommy) -> String {
 }
 
 pub fn graceful_print<T: std::fmt::Display>(s: T) {
-    if writeln!(io::stderr(), "{}", s).is_err() {
+    if writeln!(io::stderr(), "{s}").is_err() {
         std::process::exit(0);
     }
 }

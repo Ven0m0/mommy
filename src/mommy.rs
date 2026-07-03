@@ -72,9 +72,9 @@ fn perform_role_transformation(
     // Determine the new binary name
     let suffix = std::env::consts::EXE_SUFFIX;
     let new_name = if binary_info.is_cargo_subcommand {
-        format!("cargo-{}{}", new_role, suffix)
+        format!("cargo-{new_role}{suffix}")
     } else {
-        format!("{}{}", new_role, suffix)
+        format!("{new_role}{suffix}")
     };
 
     let new_path = parent.join(&new_name);
@@ -92,7 +92,7 @@ fn perform_role_transformation(
     }
 
     println!("Created new binary: {}", new_path.display());
-    println!("You can now use: {}", new_name);
+    println!("You can now use: {new_name}");
 
     Ok(())
 }
@@ -106,11 +106,7 @@ fn execute_command(
             .first()
             .ok_or_else(|| "Missing exit code".to_string())?;
         code_str.parse().map_err(|_| {
-            format!(
-                "Invalid exit code '{}'. Expected a number (e.g., 0 or 1)",
-                code_str
-            )
-            .into()
+            format!("Invalid exit code '{code_str}'. Expected a number (e.g., 0 or 1)").into()
         })
     } else if config.binary_info.is_cargo_subcommand {
         // Running as cargo subcommand - execute cargo with the provided args
@@ -191,7 +187,7 @@ fn handle_begging(
         if has_please {
             state.mood = crate::state::Mood::Chill;
             if let Err(e) = state.save() {
-                eprintln!("mommy failed to remember how she feels: {}", e);
+                eprintln!("mommy failed to remember how she feels: {e}");
             }
             let output = fill_template("{roles} forgives {pronouns} {little}~ {emotes}", config);
             let styled_output = output.style(random_style_pick(config));
@@ -218,7 +214,7 @@ fn update_begging_state(exit_code: i32) -> Result<(), Box<dyn std::error::Error>
         crate::state::Mood::Angry
     };
     if let Err(e) = state.save() {
-        eprintln!("mommy failed to remember how she feels: {}", e);
+        eprintln!("mommy failed to remember how she feels: {e}");
     }
     Ok(())
 }
@@ -252,14 +248,18 @@ fn print_affirmation(
     let (template, _affirmation_type) = match (exit_code == 0, config.only_negative) {
         (true, false) => (
             choose_template(
-                affirmations.as_ref().map(|aff| aff.positive()),
+                affirmations
+                    .as_ref()
+                    .map(super::affirmations::AffirmationData::positive),
                 AFFIRMATIONS_ERROR,
             ),
             "positive",
         ),
         (false, _) => (
             choose_template(
-                affirmations.as_ref().map(|aff| aff.negative()),
+                affirmations
+                    .as_ref()
+                    .map(super::affirmations::AffirmationData::negative),
                 AFFIRMATIONS_ERROR,
             ),
             "negative",
@@ -288,13 +288,13 @@ pub fn mommy() -> Result<i32, Box<dyn std::error::Error>> {
     if args.len() < 2 {
         let role = &config.binary_info.role;
         let usage = if is_cargo_command {
-            format!("cargo {} <cargo-command> [args...]", role)
+            format!("cargo {role} <cargo-command> [args...]")
         } else if config.needy {
             format!("{} <exit_code>", args[0])
         } else {
             format!("{} <command> [args ...]", args[0])
         };
-        eprintln!("Usage: {}", usage);
+        eprintln!("Usage: {usage}");
         exit(1);
     }
 
@@ -323,7 +323,7 @@ pub fn mommy() -> Result<i32, Box<dyn std::error::Error>> {
     let filtered_args: Vec<&str> = command_args
         .iter()
         .filter(|arg| *arg != "please")
-        .map(|s| s.as_str())
+        .map(std::string::String::as_str)
         .collect();
 
     let exit_code = execute_command(&config, &filtered_args)?;

@@ -67,7 +67,7 @@ pub struct ConfigMommy {
 fn get_env_prefix_from_binary(binary_info: &BinaryInfo) -> String {
     if binary_info.is_cargo_subcommand {
         let role = binary_info.role.to_uppercase();
-        format!("CARGO_{}S", role)
+        format!("CARGO_{role}S")
     } else {
         "SHELL_MOMMYS".to_string()
     }
@@ -75,13 +75,13 @@ fn get_env_prefix_from_binary(binary_info: &BinaryInfo) -> String {
 
 /// Helper to get env var with fallback to both prefixes
 fn env_with_fallback(prefix: &str, suffix: &str) -> Option<String> {
-    let primary_key = format!("{}_{}", prefix, suffix);
+    let primary_key = format!("{prefix}_{suffix}");
 
     env::var(&primary_key)
         .or_else(|_| {
             // Fallback to SHELL_MOMMYS_* if we're using CARGO prefix
             if prefix.starts_with("CARGO_") {
-                env::var(format!("SHELL_MOMMYS_{}", suffix))
+                env::var(format!("SHELL_MOMMYS_{suffix}"))
             } else {
                 Err(env::VarError::NotPresent)
             }

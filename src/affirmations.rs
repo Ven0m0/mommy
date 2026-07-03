@@ -45,7 +45,7 @@ pub enum AffirmationData<'a> {
     Borrowed(Affirmations<'a>),
 }
 
-impl<'a> AffirmationData<'a> {
+impl AffirmationData<'_> {
     pub fn positive(&self) -> &[String] {
         match self {
             Self::Owned(o) => o.positive(),
@@ -141,7 +141,7 @@ fn mix_moods<'a>(
                 let primary_idx = fastrand::usize(..target.len());
                 let _ = std::fmt::Write::write_fmt(
                     &mut target[primary_idx],
-                    format_args!(" {}", secondary_affirmation),
+                    format_args!(" {secondary_affirmation}"),
                 );
                 return true;
             }
@@ -166,7 +166,7 @@ fn mix_moods<'a>(
 }
 
 /// Load affirmations with optional mood mixing support
-/// When mood_mixing is enabled and mood is "ominous", it has a 20% chance to
+/// When `mood_mixing` is enabled and mood is "ominous", it has a 20% chance to
 /// mix with thirsty
 pub fn load_affirmations_with_mood_mixing(
     mood: &str,
@@ -270,7 +270,7 @@ mod tests {
         let aff = load_custom_affirmations_with_mood_mixing(path, "chill", false);
 
         // Expect: None for nonexistent path
-        assert!(aff.is_none(), "expected None for bad path, got {:#?}", aff);
+        assert!(aff.is_none(), "expected None for bad path, got {aff:#?}");
     }
 
     #[test]
