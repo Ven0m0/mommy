@@ -322,4 +322,14 @@ mod tests {
         assert!(!config.roles.is_empty());
         assert!(!config.little.is_empty());
     }
+
+    #[test]
+    fn test_parse_config_string() {
+        assert_eq!(parse_config_string("a/b/c"), vec!["a", "b", "c"]);
+        assert_eq!(parse_config_string(" a / b "), vec!["a", "b"]);
+        assert_eq!(parse_config_string("A/B"), vec!["a", "b"]);
+        assert_eq!(parse_config_string("a//b"), vec!["a", "b"]);
+        assert_eq!(parse_config_string(""), Vec::<String>::new());
+        assert_eq!(parse_config_string(" / "), Vec::<String>::new());
+    }
 }
