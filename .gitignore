@@ -25,3 +25,5 @@ debian-package/
 
 # Keep Cargo.lock for binary projects
 # Cargo.lock
+.codegraph/
+.serena/
