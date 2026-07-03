@@ -134,7 +134,7 @@ fn mix_moods<'a>(
     let mut mixed_negative = primary_set.negative.clone();
     let mut changed = false;
 
-    let mut mix = |source: &[String], target: &mut [String]| {
+    let mix = |source: &[String], target: &mut [String]| {
         if !source.is_empty() && !target.is_empty() {
             let idx = fastrand::usize(..source.len());
             if let Some(secondary_affirmation) = source.get(idx) {

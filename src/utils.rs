@@ -91,6 +91,28 @@ pub fn graceful_print<T: std::fmt::Display>(s: T) {
     }
 }
 
+/// Robust shell quoting for single arguments.
+/// Surrounds the argument with single quotes and escapes any existing single quotes.
+pub fn shell_quote(s: &str) -> String {
+    if s.is_empty() {
+        return "''".to_string();
+    }
+    // Optimization: avoid allocation if the string is already safe
+    // but for correctness, it's safer to always quote if we're not sure.
+    // Standard shell escape: ' -> '\''
+    let mut quoted = String::with_capacity(s.len() + 2);
+    quoted.push('\'');
+    for c in s.chars() {
+        if c == '\'' {
+            quoted.push_str("'\\''");
+        } else {
+            quoted.push(c);
+        }
+    }
+    quoted.push('\'');
+    quoted
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -124,5 +146,15 @@ mod tests {
         let result = fill_template(template, &config);
 
         assert_eq!(result, "Hello {unknown} world");
+    }
+
+    #[test]
+    fn test_shell_quote() {
+        assert_eq!(shell_quote(""), "''");
+        assert_eq!(shell_quote("hello"), "'hello'");
+        assert_eq!(shell_quote("hello world"), "'hello world'");
+        assert_eq!(shell_quote("don't"), "'don'\\''t'");
+        assert_eq!(shell_quote("; id"), "'; id'");
+        assert_eq!(shell_quote("'"), "''\\'''");
     }
 }
