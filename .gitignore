@@ -16,7 +16,6 @@
 *.rpm
 *.pkg.tar.zst
 pkg/
-src/
 debian-package/
 
 # Temporary files
@@ -27,3 +26,4 @@ debian-package/
 # Cargo.lock
 .codegraph/
 .serena/
+.claude/settings.local.json
