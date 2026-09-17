@@ -28,6 +28,10 @@ src/color.rs         # ANSI color parsing and styling
 src/utils.rs         # Template substitution engine
 src/state.rs         # Mood persistence for the `beg` feature (cfg-gated)
 assets/affirmations.json  # Default messages, embedded into the binary
+examples/config.json  # Default config.json; "_comment" documents moods (kept in
+                      # sync with install.sh/install.ps1); a test keeps it parseable
+install.sh            # Linux/bash installer: cargo install + PROMPT_COMMAND hook
+install.ps1           # Windows/PowerShell installer: cargo install + prompt hook
 .cargo/config.toml    # Pins target = x86_64-unknown-linux-gnu, custom rustflags
 .github/workflows/build.yml  # Only CI workflow: test, build, package, release
 PKGBUILD              # Arch Linux packaging
@@ -71,7 +75,7 @@ cargo build -r                           # Release, output at target/release/mom
                                           # target.<triple>.rustflags key REPLACES
                                           # [build]'s, it doesn't merge; not a
                                           # forced --target)
-cargo test                               # 39 tests
+cargo test                               # 40 tests
 cargo test -- --test-threads=1           # Avoid env var races between tests
 cargo build -r --target x86_64-unknown-linux-musl   # Static Linux
 cargo build -r --target x86_64-pc-windows-msvc      # Windows
@@ -182,7 +186,12 @@ back to generic `MOMMYS_*`, then hardcoded defaults. Exception:
 sed -i 's/version = "0.1.6"/version = "0.1.7"/' Cargo.toml
 git tag -a v0.1.7 -m "Release v0.1.7: <description>"
 git push origin v0.1.7   # CI builds all targets and publishes the release
+# PKGBUILD: set pkgver=0.1.7, pkgrel=1, then `updpkgsums` (needs the pushed tag)
 ```
+
+`PKGBUILD` notes: `cargo-mommy` is a hard link (a symlink would resolve back to
+`mommy` via `current_exe()` and lose cargo mode), and `RUSTFLAGS` is exported so
+`.cargo/config.toml`'s x86-64-v3 flags don't leak into the distributed binary.
 
 ## Resources
 

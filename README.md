@@ -1,5 +1,7 @@
 # mommy - affirmations in your terminal 💞
 
+![mommy demo](demo.gif)
+
 Clearly inspired by by [Gankra/cargo-mommy](https://github.com/Gankra/cargo-mommy) and
 original (in Bash) [sudofox/shell-mommy](https://github.com/sudofox/shell-mommy).
 
@@ -15,6 +17,7 @@ for a Cargo subcommand.
 
 - [How to build](#how-to-build)
 - [Easy install](#easy-install)
+- [Linux install](#linux-install)
 - [Windows install](#windows-install)
 - [Configuration](#configuration)
 - [The `beg` feature](#the-beg-feature)
@@ -31,6 +34,38 @@ for a Cargo subcommand.
 
 ## Easy install
 
+One command, no checkout needed. Both installers need [Rust](https://rustup.rs/)
+(`cargo`), build mommy from this repo, and hook it into your shell prompt.
+
+**Linux (bash):**
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/Ven0m0/mommy/master/install.sh | bash
+```
+
+**Windows (PowerShell 5.1 or 7+):**
+
+```powershell
+irm https://raw.githubusercontent.com/Ven0m0/mommy/master/install.ps1 | iex
+```
+
+To pass options, use these forms:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/Ven0m0/mommy/master/install.sh | bash -s -- --skip-profile
+curl -fsSL https://raw.githubusercontent.com/Ven0m0/mommy/master/install.sh | bash -s -- --uninstall
+```
+
+```powershell
+& ([scriptblock]::Create((irm https://raw.githubusercontent.com/Ven0m0/mommy/master/install.ps1))) -SkipProfile
+& ([scriptblock]::Create((irm https://raw.githubusercontent.com/Ven0m0/mommy/master/install.ps1))) -Uninstall
+```
+
+See [Linux install](#linux-install) and [Windows install](#windows-install) for what the
+installers change.
+
+### Manual install
+
 There is only one compiled binary, `mommy` - it detects shell-vs-cargo mode and the
 mommy/daddy role from its own filename (see `BinaryInfo::detect` in `src/config.rs`).
 `cargo install` cannot produce a second `cargo-mommy` binary on its own, so if you want
@@ -44,20 +79,40 @@ cp ~/.cargo/bin/mommy ~/.cargo/bin/cargo-mommy   # enables `cargo mommy ...`
 (The upstream `shell-mommy` crate on crates.io is a different, unrelated fork - this
 repo isn't published there.)
 
+## Linux install
+
+Run the installer from a checkout, or use the [one-line command](#easy-install):
+
+```sh
+./install.sh
+```
+
+Same as the [Windows installer](#windows-install), but for bash: it installs `mommy` and
+`cargo-mommy` to `~/.cargo/bin` and appends a marker-guarded block to `~/.bashrc`. The
+block hooks `PROMPT_COMMAND` and sets `SHELL_MOMMYS_NEEDY=1`. The hook runs first in
+`PROMPT_COMMAND` so it sees the real exit code. If another tool later puts itself in front
+of it, move the mommy block to the end of `~/.bashrc`.
+
+- `./install.sh --rc-file ~/.bash_profile` - hook a different file
+- `./install.sh --skip-profile` - install the binaries only, skip the prompt hook
+- `./install.sh --uninstall` - remove the rc block and uninstall the crate
+
 ## Windows install
 
-Run the installer from PowerShell:
+Run the installer from a checkout, or use the [one-line command](#easy-install):
 
 ```powershell
 .\install.ps1
 ```
 
 This builds and installs `mommy` via `cargo install`, copies it to `cargo-mommy.exe` so
-`cargo mommy <cmd>` works too, and appends a marker-guarded block to
-`$env:USERPROFILE\Documents\PowerShell\Microsoft.PowerShell_profile.ps1` that wraps your
-prompt so mommy reacts to every command's exit code. It also sets `"needy": true` in
-the [config file](#config-file), keeping any other keys already there. Re-running the
-script updates the block in place instead of duplicating it.
+`cargo mommy <cmd>` works too, and appends a marker-guarded block to the `$PROFILE` of the
+PowerShell that runs the script (use `-ProfilePath` to pick another file). The block wraps
+your prompt so mommy reacts to every command's exit code. The block sets
+`SHELL_MOMMYS_NEEDY=1` for the session, so `"needy"` in the [config file](#config-file)
+can stay `false`. If no config file exists, the script creates one with the defaults; an
+existing one is left untouched. Re-running the script updates the block in place instead
+of duplicating it.
 
 - `.\install.ps1 -SkipProfile` - install the binaries only, skip the profile hook
 - `.\install.ps1 -Uninstall` - remove the profile block and uninstall the crate
@@ -81,7 +136,12 @@ set `SHELL_MOMMYS_CONFIG` / `CARGO_MOMMYS_CONFIG`. Every key is optional:
 ```
 
 - `moods` - the moods mommy picks from at random, same values as `SHELL_MOMMYS_MOODS`
-- `needy` - same as `SHELL_MOMMYS_NEEDY=1`
+- `needy` - same as `SHELL_MOMMYS_NEEDY=1` (default `false`)
+
+- `_comment` - free-form notes, ignored (JSON has no comments)
+
+`examples/config.json` holds the defaults plus a `_comment` listing every mood; copy it to
+`~/.config/mommy/config.json` to start. `install.sh` and `install.ps1` write the same notes when they create the file.
 
 The matching environment variable overrides the file setting. If the file is invalid
 (bad JSON or an unknown key), mommy prints a warning and uses the defaults.
@@ -348,7 +408,7 @@ is stateless.
   end users need to worry about.
 - `SHELL_MOMMYS_ALIASES` / `CARGO_MOMMYS_ALIASES` must point at a `bash`-compatible file
   on Linux/macOS and a `.ps1` file on Windows - the two are not interchangeable.
-- Enabling needy mode and wiring mommy into your prompt (as `install.ps1` does) means it
+- Wiring mommy into your prompt with needy mode (as `install.ps1` does) means it
   runs on *every* prompt render, not just after commands you care about.
 - In a PowerShell `prompt` function, the host discards native stderr, where mommy
   writes. Pipe the output through the host instead:

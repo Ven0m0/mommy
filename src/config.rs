@@ -73,6 +73,9 @@ pub struct ConfigMommy {
 struct FileConfig {
     moods: Option<Vec<String>>,
     needy: bool,
+    /// Human-readable notes (JSON has no comments); never read.
+    #[serde(rename = "_comment")]
+    _comment: Vec<String>,
 }
 
 pub fn home_dir() -> PathBuf {
@@ -298,6 +301,16 @@ mod tests {
 
         assert_eq!(config.moods, vec!["ominous", "thirsty"]);
         assert!(config.needy);
+    }
+
+    #[test]
+    fn test_example_config_matches_defaults() {
+        let example: FileConfig =
+            serde_json::from_str(include_str!("../examples/config.json")).unwrap();
+
+        assert_eq!(example.moods, Some(vec!["chill".to_string()]));
+        assert!(!example.needy);
+        assert!(!example._comment.is_empty());
     }
 
     #[test]

@@ -1,0 +1,12 @@
+{
+  "_comment": [
+    "moods: mommy picks one at random per message. Available moods:",
+    "  chill   - wholesome, supportive encouragement (default; unknown names fall back to it)",
+    "  ominous - eldritch, cult-like praise and disapproval",
+    "  thirsty - flirty/NSFW, opt-in only",
+    "needy: true makes a lone number argument an exit code instead of a command.",
+    "  The install.sh/install.ps1 prompt hooks enable it on their own via SHELL_MOMMYS_NEEDY."
+  ],
+  "moods": ["chill"],
+  "needy": false
+}
