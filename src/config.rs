@@ -1,4 +1,8 @@
-use std::{env, path::PathBuf};
+use serde::Deserialize;
+use std::{
+    env, fs,
+    path::{Path, PathBuf},
+};
 
 /// Cached binary information to avoid redundant filesystem calls
 #[derive(Debug, Clone)]
@@ -63,6 +67,45 @@ pub struct ConfigMommy {
     pub binary_info: BinaryInfo,
 }
 
+/// Optional settings from the config file; env vars override these.
+#[derive(Debug, Default, Deserialize)]
+#[serde(default, deny_unknown_fields)]
+struct FileConfig {
+    moods: Option<Vec<String>>,
+    needy: bool,
+}
+
+pub fn home_dir() -> PathBuf {
+    // HOME is unset by default on native Windows (only USERPROFILE is guaranteed);
+    // fall back to the OS temp dir if neither is available.
+    env::var_os("HOME")
+        .or_else(|| env::var_os("USERPROFILE"))
+        .map_or_else(env::temp_dir, PathBuf::from)
+}
+
+fn config_file_path(prefix: &str) -> PathBuf {
+    if let Some(path) = env_with_fallback(prefix, "CONFIG") {
+        return PathBuf::from(path);
+    }
+    env::var_os("XDG_CONFIG_HOME")
+        .map_or_else(|| home_dir().join(".config"), PathBuf::from)
+        .join("mommy")
+        .join("config.json")
+}
+
+/// A missing file is normal; a broken one is reported but never fatal, since
+/// mommy runs on every prompt and must not get in the way of the shell.
+fn load_file_config(path: &Path) -> FileConfig {
+    let Ok(contents) = fs::read_to_string(path) else {
+        return FileConfig::default();
+    };
+    // Windows editors like to prepend a BOM, which serde_json rejects.
+    serde_json::from_str(contents.trim_start_matches('\u{feff}')).unwrap_or_else(|e| {
+        eprintln!("mommy ignored invalid config {}: {e}", path.display());
+        FileConfig::default()
+    })
+}
+
 /// Gets the environment variable prefix based on the binary info
 fn get_env_prefix_from_binary(binary_info: &BinaryInfo) -> String {
     if binary_info.is_cargo_subcommand {
@@ -102,6 +145,7 @@ pub fn load_config() -> ConfigMommy {
     // Detect binary info once
     let binary_info = BinaryInfo::detect();
     let env_prefix = get_env_prefix_from_binary(&binary_info);
+    let file_config = load_file_config(&config_file_path(&env_prefix));
 
     // Load raw config values
     let pronouns_raw =
@@ -114,7 +158,9 @@ pub fn load_config() -> ConfigMommy {
     let color_raw = env_with_fallback(&env_prefix, "COLOR").unwrap_or_else(|| "white".to_string());
     let style_raw = env_with_fallback(&env_prefix, "STYLE").unwrap_or_else(|| "bold".to_string());
     let color_rgb_raw = env_with_fallback(&env_prefix, "COLOR_RGB");
-    let moods_raw = env_with_fallback(&env_prefix, "MOODS").unwrap_or_else(|| "chill".to_string());
+    let moods_raw = env_with_fallback(&env_prefix, "MOODS")
+        .or_else(|| file_config.moods.map(|moods| moods.join("/")))
+        .unwrap_or_else(|| "chill".to_string());
 
     // Pre-parse all slash-separated config values
     let pronouns = parse_config_string(&pronouns_raw);
@@ -140,7 +186,7 @@ pub fn load_config() -> ConfigMommy {
 
     let aliases = env_with_fallback(&env_prefix, "ALIASES");
     let affirmations = env_with_fallback(&env_prefix, "AFFIRMATIONS");
-    let needy = env_with_fallback(&env_prefix, "NEEDY").is_some_and(|v| v == "1");
+    let needy = env_with_fallback(&env_prefix, "NEEDY").map_or(file_config.needy, |v| v == "1");
     let mood_mixing = env_with_fallback(&env_prefix, "MOOD_MIXING").is_some_and(|v| v == "1");
 
     // Special handling for ONLY_NEGATIVE (uses SHELL_MOMMY prefix, not
@@ -217,12 +263,69 @@ mod tests {
             "CARGO_MOMMYS_MOOD_MIXING",
             "CARGO_MOMMYS_MOODS",
             "CARGO_MOMMY_ONLY_NEGATIVE",
+            "CARGO_MOMMYS_CONFIG",
         ];
         for k in &keys {
             unsafe {
                 env::remove_var(k);
             }
         }
+        // Keep the developer's real config file out of the tests.
+        unsafe {
+            env::set_var("SHELL_MOMMYS_CONFIG", "/nonexistent/mommy/config.json");
+        }
+    }
+
+    fn write_temp_config(name: &str, contents: &str) -> PathBuf {
+        let path = env::temp_dir().join(format!("mommy-test-{name}.json"));
+        fs::write(&path, contents).unwrap();
+        unsafe {
+            env::set_var("SHELL_MOMMYS_CONFIG", &path);
+        }
+        path
+    }
+
+    #[test]
+    fn test_config_file_sets_moods_and_needy() {
+        let _lock = ENV_TEST_LOCK.lock().unwrap();
+        clear_all();
+        let path = write_temp_config(
+            "file",
+            "\u{feff}{\"moods\": [\"Ominous\", \"thirsty\"], \"needy\": true}",
+        );
+        let config = load_config();
+        fs::remove_file(path).unwrap();
+
+        assert_eq!(config.moods, vec!["ominous", "thirsty"]);
+        assert!(config.needy);
+    }
+
+    #[test]
+    fn test_env_overrides_config_file() {
+        let _lock = ENV_TEST_LOCK.lock().unwrap();
+        clear_all();
+        let path = write_temp_config("override", r#"{"moods": ["ominous"], "needy": true}"#);
+        unsafe {
+            env::set_var("SHELL_MOMMYS_MOODS", "chill");
+            env::set_var("SHELL_MOMMYS_NEEDY", "0");
+        }
+        let config = load_config();
+        fs::remove_file(path).unwrap();
+
+        assert_eq!(config.moods, vec!["chill"]);
+        assert!(!config.needy);
+    }
+
+    #[test]
+    fn test_invalid_config_file_uses_defaults() {
+        let _lock = ENV_TEST_LOCK.lock().unwrap();
+        clear_all();
+        let path = write_temp_config("invalid", r#"{"mood": ["ominous"]}"#);
+        let config = load_config();
+        fs::remove_file(path).unwrap();
+
+        assert_eq!(config.moods, vec!["chill"]);
+        assert!(!config.needy);
     }
 
     #[test]

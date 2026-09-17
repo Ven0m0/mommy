@@ -1,7 +1,5 @@
 # mommy - affirmations in your terminal 💞
 
-![screenshot](https://github.com/sleepymincy/sleepymincy/blob/main/.gitfiles/repos/images/mommy.png)
-
 Clearly inspired by by [Gankra/cargo-mommy](https://github.com/Gankra/cargo-mommy) and
 original (in Bash) [sudofox/shell-mommy](https://github.com/sudofox/shell-mommy).
 
@@ -57,9 +55,9 @@ Run the installer from PowerShell:
 This builds and installs `mommy` via `cargo install`, copies it to `cargo-mommy.exe` so
 `cargo mommy <cmd>` works too, and appends a marker-guarded block to
 `$env:USERPROFILE\Documents\PowerShell\Microsoft.PowerShell_profile.ps1` that wraps your
-prompt so mommy reacts to every command's exit code (sets `SHELL_MOMMYS_NEEDY=1`
-internally - see [Configuration](#configuration) below for what that does). Re-running
-the script updates the block in place instead of duplicating it.
+prompt so mommy reacts to every command's exit code. It also sets `"needy": true` in
+the [config file](#config-file), keeping any other keys already there. Re-running the
+script updates the block in place instead of duplicating it.
 
 - `.\install.ps1 -SkipProfile` - install the binaries only, skip the profile hook
 - `.\install.ps1 -Uninstall` - remove the profile block and uninstall the crate
@@ -68,6 +66,25 @@ For `SHELL_MOMMYS_ALIASES` on Windows, point it at a `.ps1` file that defines fu
 or `Set-Alias` entries - mommy dot-sources it before running your command.
 
 ## Configuration
+
+### Config file
+
+mommy reads an optional JSON file from `~/.config/mommy/config.json`
+(`$XDG_CONFIG_HOME/mommy/config.json` if that variable is set). To use a different path,
+set `SHELL_MOMMYS_CONFIG` / `CARGO_MOMMYS_CONFIG`. Every key is optional:
+
+```json
+{
+  "moods": ["chill", "ominous"],
+  "needy": true
+}
+```
+
+- `moods` - the moods mommy picks from at random, same values as `SHELL_MOMMYS_MOODS`
+- `needy` - same as `SHELL_MOMMYS_NEEDY=1`
+
+The matching environment variable overrides the file setting. If the file is invalid
+(bad JSON or an unknown key), mommy prints a warning and uses the defaults.
 
 ### Environment Variables
 
@@ -107,8 +124,10 @@ Available environment variables:
   (a top-level `moods` object with `positive`/`negative` arrays per mood - see
   [Moods System](#moods-system-advanced-responses) below), otherwise the code will fall
   back to built-in default affirmations
-- `SHELL_MOMMYS_NEEDY` / `CARGO_MOMMYS_NEEDY` - can be `1`, or `0` (default), decides if
-  mommy is accepting exit code as an argument, or a command
+- `SHELL_MOMMYS_NEEDY` / `CARGO_MOMMYS_NEEDY` - can be `1`, or `0` (default). When `1`,
+  a single integer argument is read as an exit code. Any other arguments still run as
+  a command
+- `SHELL_MOMMYS_CONFIG` / `CARGO_MOMMYS_CONFIG` - path to the [config file](#config-file)
 - `SHELL_MOMMY_ONLY_NEGATIVE` / `CARGO_MOMMY_ONLY_NEGATIVE` - can be `1` or `0`
   (default), decides if mommy only talks when exit code is not 0
 - `SHELL_MOMMY_RECURSION_LIMIT` / `CARGO_MOMMY_RECURSION_LIMIT` - internal recursion
@@ -142,8 +161,8 @@ export SHELL_MOMMYS_NEEDY=1 # Will make mommy take error code instead of a comma
 export SHELL_MOMMY_ONLY_NEGATIVE=1 # Will make mommy only print affirmations if exit code is not 0
 ```
 
-When you set `SHELL_MOMMYS_NEEDY` variable to `1`, mommy will accept exit codes instead
-of commands as an argument. Examples:
+When you set `SHELL_MOMMYS_NEEDY` variable to `1`, mommy will accept an exit code
+instead of a command as the argument. Examples:
 
 - `sjdfhsdjkfhsdf; mommy $?` <- returns exit code `127`, which will result in negative
   response from mommy
@@ -329,8 +348,11 @@ is stateless.
   end users need to worry about.
 - `SHELL_MOMMYS_ALIASES` / `CARGO_MOMMYS_ALIASES` must point at a `bash`-compatible file
   on Linux/macOS and a `.ps1` file on Windows - the two are not interchangeable.
-- Setting `SHELL_MOMMYS_NEEDY=1` and wiring mommy into your prompt (as `install.ps1`
-  does) means it runs on *every* prompt render, not just after commands you care about.
+- Enabling needy mode and wiring mommy into your prompt (as `install.ps1` does) means it
+  runs on *every* prompt render, not just after commands you care about.
+- In a PowerShell `prompt` function, the host discards native stderr, where mommy
+  writes. Pipe the output through the host instead:
+  `mommy $code 2>&1 | ForEach-Object { Write-Host "$_" }` (`install.ps1` does this).
 - Open up an [issue](https://github.com/Ven0m0/mommy/issues/new) if you find something
   else.
 

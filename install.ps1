@@ -6,7 +6,8 @@
     Builds/installs the `mommy` binary with `cargo install`, copies it to
     `cargo-mommy.exe` so `cargo mommy <cmd>` works too, and appends a
     marker-guarded block to the given profile that wraps `prompt` so mommy
-    reacts to every command's exit code (SHELL_MOMMYS_NEEDY=1).
+    reacts to every command's exit code, and sets "needy": true in
+    ~/.config/mommy/config.json (other keys there are kept).
 .PARAMETER ProfilePath
     Profile file to modify. Defaults to the current-user PowerShell profile.
 .PARAMETER SkipProfile
@@ -27,15 +28,19 @@ $MarkerStart = '# >>> mommy >>>'
 $MarkerEnd = '# <<< mommy <<<'
 $ProfileBlock = @"
 $MarkerStart
-`$env:SHELL_MOMMYS_NEEDY = '1'
 `$__mommyWrap = {
     if (-not `$global:__mommyPromptWrapped) {
         `$global:__mommyInnerPrompt = (Get-Command prompt).ScriptBlock
         function global:prompt {
             `$ok = `$?
-            `$last = `$global:LASTEXITCODE
+            # Other prompt integrations can leave a non-int (or a bool) in
+            # LASTEXITCODE; -as [int] yields `$null for those instead of passing
+            # junk like 'True' to mommy, which only accepts an exit code.
+            `$last = `$global:LASTEXITCODE -as [int]
             `$code = if (`$ok) { 0 } elseif (`$last) { `$last } else { 1 }
-            mommy `$code
+            # The host drops native stderr while it evaluates prompt, so the
+            # affirmation must be captured and re-emitted through the host.
+            mommy `$code 2>&1 | ForEach-Object { Write-Host "`$_" }
             `$global:LASTEXITCODE = `$last
             & `$global:__mommyInnerPrompt
         }
@@ -98,6 +103,18 @@ Copy-Item -LiteralPath $mommyExe -Destination (Join-Path $cargoBin 'cargo-mommy.
 Write-Host "Installed mommy.exe and cargo-mommy.exe to $cargoBin"
 
 if ($SkipProfile) { return }
+
+$configDir = if ($env:XDG_CONFIG_HOME) { Join-Path $env:XDG_CONFIG_HOME 'mommy' } else { Join-Path $HOME '.config\mommy' }
+$configPath = Join-Path $configDir 'config.json'
+$config = if (Test-Path -LiteralPath $configPath) {
+    Get-Content -LiteralPath $configPath -Raw | ConvertFrom-Json
+} else {
+    [pscustomobject]@{ moods = @('chill') }
+}
+$config | Add-Member -NotePropertyName needy -NotePropertyValue $true -Force
+$null = New-Item -ItemType Directory -Path $configDir -Force
+$config | ConvertTo-Json | Set-Content -LiteralPath $configPath
+Write-Host "Enabled needy mode in $configPath"
 
 $profileDir = Split-Path -Parent $ProfilePath
 if (-not (Test-Path $profileDir)) { New-Item -ItemType Directory -Path $profileDir -Force | Out-Null }

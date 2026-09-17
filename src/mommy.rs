@@ -35,6 +35,15 @@ fn is_quiet_mode_enabled(args: &[String]) -> bool {
     args.iter().any(|arg| arg == "--quiet" || arg == "-q")
 }
 
+/// In needy mode a prompt hook calls mommy with the shell's last exit code as
+/// the sole argument instead of a command to wrap.
+fn parse_needy_exit_code(filtered_args: &[&str]) -> Option<i32> {
+    match filtered_args {
+        [code] => code.parse().ok(),
+        _ => None,
+    }
+}
+
 /// Check if a string is a simple word safe for alias expansion
 fn is_safe_for_alias(s: &str) -> bool {
     !s.is_empty()
@@ -105,14 +114,7 @@ fn execute_command(
     config: &ConfigMommy,
     filtered_args: &[&str],
 ) -> Result<i32, Box<dyn std::error::Error>> {
-    if config.needy {
-        let code_str = filtered_args
-            .first()
-            .ok_or_else(|| "Missing exit code".to_string())?;
-        code_str.parse().map_err(|_| {
-            format!("Invalid exit code '{code_str}'. Expected a number (e.g., 0 or 1)").into()
-        })
-    } else if config.binary_info.is_cargo_subcommand {
+    if config.binary_info.is_cargo_subcommand {
         // Running as cargo subcommand - execute cargo with the provided args
         if filtered_args.is_empty() {
             return Err("No cargo command provided".into());
@@ -371,7 +373,12 @@ pub fn mommy() -> Result<i32, Box<dyn std::error::Error>> {
         .map(std::string::String::as_str)
         .collect();
 
-    let exit_code = execute_command(&config, &filtered_args)?;
+    // Anything that isn't a lone exit code is still run as a command, so enabling
+    // needy mode globally (config file or env) never breaks `mommy <command>`.
+    let exit_code = match parse_needy_exit_code(&filtered_args) {
+        Some(code) if config.needy => code,
+        _ => execute_command(&config, &filtered_args)?,
+    };
 
     // Update begging state (if enabled)
     #[cfg(feature = "beg")]
@@ -425,6 +432,20 @@ mod tests {
     fn test_check_role_transformation_empty() {
         let args: Vec<String> = vec![];
         assert_eq!(check_role_transformation(&args), None);
+    }
+
+    #[test]
+    fn test_parse_needy_exit_code_valid() {
+        assert_eq!(parse_needy_exit_code(&["0"]), Some(0));
+        assert_eq!(parse_needy_exit_code(&["1"]), Some(1));
+        assert_eq!(parse_needy_exit_code(&["-1"]), Some(-1));
+    }
+
+    #[test]
+    fn test_parse_needy_exit_code_invalid() {
+        assert_eq!(parse_needy_exit_code(&["notanumber"]), None);
+        assert_eq!(parse_needy_exit_code(&[]), None);
+        assert_eq!(parse_needy_exit_code(&["1", "2"]), None);
     }
 
     #[test]

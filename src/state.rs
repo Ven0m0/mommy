@@ -17,12 +17,7 @@ pub struct State {
 
 impl State {
     fn path() -> PathBuf {
-        // HOME is unset by default on native Windows (only USERPROFILE is guaranteed);
-        // fall back to the OS temp dir if neither is available.
-        let home = std::env::var("HOME")
-            .or_else(|_| std::env::var("USERPROFILE"))
-            .unwrap_or_else(|_| std::env::temp_dir().display().to_string());
-        PathBuf::from(home).join(".mommy.state")
+        crate::config::home_dir().join(".mommy.state")
     }
 
     pub fn load() -> Result<Self, Box<dyn Error>> {

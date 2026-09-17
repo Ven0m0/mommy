@@ -12,8 +12,9 @@ Reimplementation of shell-mommy + cargo-mommy in one binary.
 - Version source of truth: `Cargo.toml` (currently 0.1.6)
 - Single Cargo bin target: `mommy` (see "Dual-mode detection" below — there
   is no separate `cargo-mommy` bin target)
-- Stateless by default; the only exception is the opt-in `beg` feature
-  (see below)
+- Stateless by default: mommy writes no state except in the opt-in `beg` feature
+  (see below). It reads one optional config file, `~/.config/mommy/config.json`
+  (`moods`, `needy`; env vars override it; see `load_file_config` in `src/config.rs`)
 - License: Unlicense
 
 ## Repo Structure
@@ -70,7 +71,7 @@ cargo build -r                           # Release, output at target/release/mom
                                           # target.<triple>.rustflags key REPLACES
                                           # [build]'s, it doesn't merge; not a
                                           # forced --target)
-cargo test                               # 34 tests across 6 modules
+cargo test                               # 39 tests
 cargo test -- --test-threads=1           # Avoid env var races between tests
 cargo build -r --target x86_64-unknown-linux-musl   # Static Linux
 cargo build -r --target x86_64-pc-windows-msvc      # Windows
@@ -116,7 +117,8 @@ is stateless. Build/test it explicitly: `cargo test --features beg`.
 ## Conventions
 
 **Design Principles:**
-1. Stateless execution (except `beg`, above) — no config files
+1. Stateless execution (except `beg`, above). The only config file is the optional
+   read-only `config.json`. Env vars stay the primary interface
 2. Embedded assets — all data compiled into the binary
 3. Minimal error handling — validate only at system boundaries
 4. No premature abstraction — three similar lines over unnecessary generality
@@ -133,6 +135,13 @@ back to generic `MOMMYS_*`, then hardcoded defaults. Exception:
 (`feat:`, `fix:`, `test:`, `docs:`, `ci:`, `chore:`).
 
 ## Known Issues
+
+- **PowerShell prompt hook swallows stderr**: mommy prints to stderr
+  (`graceful_print`). The PowerShell host discards native stderr while it
+  evaluates `prompt`, so a bare `mommy $code` in `prompt` prints nothing, with
+  no error. `install.ps1` uses `mommy $code 2>&1 | ForEach-Object { Write-Host "$_" }`.
+  Calling `prompt` from a script does not reproduce this. Only the host's own
+  prompt render does (verified by reading the conhost buffer).
 
 - **CI version mismatch**: `.github/workflows/build.yml` hardcodes `0.1.5`
   in the Debian packaging job (lines ~99, 108, 112) while `Cargo.toml` is at
