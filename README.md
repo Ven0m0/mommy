@@ -9,31 +9,63 @@ After using Bash implementation for a bit, I've decided to try writing my own
 implementation in Rust for the sake of learning new things. ~~In the process I think I
 got too far lost in the cult of Rust.~~
 
-**NEW:** Now with full cargo-mommy integration! Use as both `mommy` for shell commands
-and `cargo-mommy` as a Cargo subcommand!
+**NEW:** Full Windows/PowerShell support, alongside cargo-mommy integration! Use as
+`mommy` for shell commands and (with one extra copy step, see below) as `cargo-mommy`
+for a Cargo subcommand.
 
 ## Quick Links
 
 - [How to build](#how-to-build)
 - [Easy install](#easy-install)
+- [Windows install](#windows-install)
 - [Configuration](#configuration)
+- [The `beg` feature](#the-beg-feature)
 - [Known bugs / limitations](#known-bugs--limitations)
 - [License information](#license-information)
 
 ## How to build
 
 - Get [Rust](https://rustup.rs/)
-- `git clone https://github.com/sleepymincy/mommy`
+- `git clone https://github.com/Ven0m0/mommy`
 - `cd mommy`
 - `cargo build` or `cargo build -r` for release version (recommended)
 - Compiled binary will be in `./target/release/`
 
 ## Easy install
 
-- Get [Rust](https://rustup.rs/)
-- `cargo install shell-mommy`
-- This will install both `mommy` (for shell commands) and `cargo-mommy` (for cargo
-  commands)
+There is only one compiled binary, `mommy` - it detects shell-vs-cargo mode and the
+mommy/daddy role from its own filename (see `BinaryInfo::detect` in `src/config.rs`).
+`cargo install` cannot produce a second `cargo-mommy` binary on its own, so if you want
+to use it as a Cargo subcommand you need one extra copy step:
+
+```sh
+cargo install --git https://github.com/Ven0m0/mommy
+cp ~/.cargo/bin/mommy ~/.cargo/bin/cargo-mommy   # enables `cargo mommy ...`
+```
+
+(The upstream `shell-mommy` crate on crates.io is a different, unrelated fork - this
+repo isn't published there.)
+
+## Windows install
+
+Run the installer from PowerShell:
+
+```powershell
+.\install.ps1
+```
+
+This builds and installs `mommy` via `cargo install`, copies it to `cargo-mommy.exe` so
+`cargo mommy <cmd>` works too, and appends a marker-guarded block to
+`$env:USERPROFILE\Documents\PowerShell\Microsoft.PowerShell_profile.ps1` that wraps your
+prompt so mommy reacts to every command's exit code (sets `SHELL_MOMMYS_NEEDY=1`
+internally - see [Configuration](#configuration) below for what that does). Re-running
+the script updates the block in place instead of duplicating it.
+
+- `.\install.ps1 -SkipProfile` - install the binaries only, skip the profile hook
+- `.\install.ps1 -Uninstall` - remove the profile block and uninstall the crate
+
+For `SHELL_MOMMYS_ALIASES` on Windows, point it at a `.ps1` file that defines functions
+or `Set-Alias` entries - mommy dot-sources it before running your command.
 
 ## Configuration
 
@@ -56,7 +88,11 @@ Available environment variables:
   else (auto-detected from binary name)
 - `SHELL_MOMMYS_PRONOUNS` / `CARGO_MOMMYS_PRONOUNS` - to change mommy's pronouns
 - `SHELL_MOMMYS_MOODS` / `CARGO_MOMMYS_MOODS` - picks the set of possible responses
-  (default: "chill", possible values: "chill", "ominous", "thirsty")
+  (default: "chill", possible values: "chill", "ominous", "thirsty"; an unknown mood
+  falls back to "chill")
+- `SHELL_MOMMYS_MOOD_MIXING` / `CARGO_MOMMYS_MOOD_MIXING` - `1` or `0` (default);
+  when `1` and the picked mood is "ominous", has a 20% chance to blend in a "thirsty"
+  line too
 - `SHELL_MOMMYS_COLOR` / `CARGO_MOMMYS_COLOR` - to change text color
 - `SHELL_MOMMYS_STYLE` / `CARGO_MOMMYS_STYLE` - to change text style
 - `SHELL_MOMMYS_COLOR_RGB` / `CARGO_MOMMYS_COLOR_RGB` - to set custom rgb color for the
@@ -67,12 +103,17 @@ Available environment variables:
   functions or `Set-Alias`)
 - `SHELL_MOMMYS_AFFIRMATIONS` / `CARGO_MOMMYS_AFFIRMATIONS` - provide a path to a valid
   `.json` file, formatted exactly like
-  [assets/affirmations.json](https://github.com/sleepymincy/mommy/blob/master/assets/affirmations.json),
-  otherwise the code will fall back to built-in default affirmations
+  [assets/affirmations.json](https://github.com/Ven0m0/mommy/blob/master/assets/affirmations.json)
+  (a top-level `moods` object with `positive`/`negative` arrays per mood - see
+  [Moods System](#moods-system-advanced-responses) below), otherwise the code will fall
+  back to built-in default affirmations
 - `SHELL_MOMMYS_NEEDY` / `CARGO_MOMMYS_NEEDY` - can be `1`, or `0` (default), decides if
   mommy is accepting exit code as an argument, or a command
 - `SHELL_MOMMY_ONLY_NEGATIVE` / `CARGO_MOMMY_ONLY_NEGATIVE` - can be `1` or `0`
   (default), decides if mommy only talks when exit code is not 0
+- `SHELL_MOMMY_RECURSION_LIMIT` / `CARGO_MOMMY_RECURSION_LIMIT` - internal recursion
+  counter passed to child invocations, not meant to be set by hand; mommy refuses to run
+  once it reaches 100 (see [Advanced Features](#advanced-features))
 
 You can either specify environment variables every time you run mommy:
 
@@ -136,14 +177,17 @@ precmd() { mommy $? }
 export PS1="\$(mommy \$?)$PS1"
 ```
 
+On Windows, `.\install.ps1` sets this up for you by wrapping your PowerShell `prompt`
+function - see [Windows install](#windows-install).
+
 You can also change `affirmations.json` before building, or load your own with
 `SHELL_MOMMYS_AFFIRMATIONS` during runtime, to un-degenerate this piece of software or
 make it worse. I'm not the one to judge.
 
 ## Cargo-Mommy Features
 
-The tool now includes full `cargo-mommy` compatibility! You can use it as a Cargo
-subcommand:
+Once you've copied the binary to `cargo-mommy` (see [Easy install](#easy-install) /
+[Windows install](#windows-install)), you can use it as a Cargo subcommand:
 
 ### Basic Usage
 
@@ -172,10 +216,15 @@ cargo mommy i mean daddy
 cargo daddy build
 ```
 
+This copies the currently running binary to a new file next to itself (with `.exe`
+appended on Windows), named `cargo-<role>` or `<role>` depending on which mode you're
+running in.
+
 ### Advanced Features
 
-- **Recursion Protection**: Automatically tracks recursion depth up to 100 levels to
-  prevent infinite loops
+- **Recursion Protection**: Each invocation increments a counter passed to the child
+  process via `SHELL_MOMMY_RECURSION_LIMIT` / `CARGO_MOMMY_RECURSION_LIMIT`. If it
+  reaches 100, mommy refuses to run and exits with code `2` instead of looping forever.
 - **Binary Name Detection**: Automatically detects if you're using `cargo-mommy` vs
   `mommy` and adjusts behavior
 - **Dual Environment Variable Support**: Works with both `CARGO_MOMMYS_*` and
@@ -231,21 +280,59 @@ SHELL_MOMMYS_MOODS="ominous" mommy ls
 # Mix multiple moods
 SHELL_MOMMYS_MOODS="chill/ominous/thirsty" mommy echo "hello"
 # Output will randomly be from any of the three moods
+
+# Occasionally blend ominous with thirsty
+SHELL_MOMMYS_MOODS="ominous" SHELL_MOMMYS_MOOD_MIXING=1 mommy echo "hello"
 ```
 
 **Custom Affirmations with Moods:**
 
-If you're using a custom affirmations file via `SHELL_MOMMYS_AFFIRMATIONS`, you can now
-structure it with moods! See
-[assets/affirmations.json](https://github.com/sleepymincy/mommy/blob/master/assets/affirmations.json)
-for the format. Your custom file should include a `moods` object with mood names as
-keys, each containing `positive` and `negative` arrays. For backward compatibility,
-top-level `positive` and `negative` arrays are still supported and used as fallback.
+If you're using a custom affirmations file via `SHELL_MOMMYS_AFFIRMATIONS`, structure it
+with moods! See
+[assets/affirmations.json](https://github.com/Ven0m0/mommy/blob/master/assets/affirmations.json)
+for the format: a top-level `moods` object with mood names as keys, each containing
+`positive` and `negative` arrays. There is no supported top-level fallback -
+`assets/affirmations.json` itself only defines `moods`, so an unrecognized mood name
+just falls back to the `chill` entry inside `moods`.
+
+## The `beg` feature
+
+An opt-in, stateful mood that isn't built by default:
+
+```sh
+cargo build --features beg
+```
+
+When enabled, mommy remembers whether it's "angry" in `~/.mommy.state` (or
+`%USERPROFILE%\.mommy.state` on Windows, falling back to the OS temp dir if neither
+`HOME` nor `USERPROFILE` is set - see `src/state.rs`). After a failing command mommy
+gets angry and keeps refusing (exit code `1`) until you run it again with `please` in
+the command:
+
+```sh
+mommy false        # fails, mommy gets angry
+mommy ls           # still angry, exits 1 until you say please
+mommy ls please    # forgiven, mood resets to chill
+```
+
+This is the only part of the codebase that persists anything to disk - everything else
+is stateless.
 
 ## Known bugs / limitations
 
-- No known ones, but I'm sure there are. Open up an
-  [issue](https://github.com/sleepymincy/mommy/issues/new) if you find one.
+- Only one binary (`mommy`) is built by Cargo - there is no separate `cargo-mommy`
+  target, so `cargo install` alone won't give you the Cargo-subcommand entry point. You
+  need the manual copy step in [Easy install](#easy-install) (`install.ps1` does this
+  for you on Windows).
+- `.github/workflows/build.yml` currently hardcodes version `0.1.5` in its Debian
+  packaging job while `Cargo.toml` is at a newer version - a known drift, not something
+  end users need to worry about.
+- `SHELL_MOMMYS_ALIASES` / `CARGO_MOMMYS_ALIASES` must point at a `bash`-compatible file
+  on Linux/macOS and a `.ps1` file on Windows - the two are not interchangeable.
+- Setting `SHELL_MOMMYS_NEEDY=1` and wiring mommy into your prompt (as `install.ps1`
+  does) means it runs on *every* prompt render, not just after commands you care about.
+- Open up an [issue](https://github.com/Ven0m0/mommy/issues/new) if you find something
+  else.
 
 ## License information
 
