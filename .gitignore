@@ -27,3 +27,4 @@ debian-package/
 .codegraph/
 .serena/
 .claude/settings.local.json
+.omc/

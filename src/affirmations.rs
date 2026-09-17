@@ -243,10 +243,12 @@ mod tests {
         );
 
         // Expect: one specific affirmation from the ../assets/affirmations.json
-        assert!(affirmations
-            .positive()
-            .iter()
-            .any(|s| s == "*boops your nose* {emotes}"));
+        assert!(
+            affirmations
+                .positive()
+                .iter()
+                .any(|s| s == "*boops your nose* {emotes}")
+        );
     }
 
     #[test]
@@ -254,14 +256,16 @@ mod tests {
         let aff = load_affirmations_with_mood("chill").unwrap();
 
         // Expect: one valid positive and negative affirmations
-        assert!(aff
-            .positive()
-            .iter()
-            .any(|s| s == "you're such a smart cookie~ {emotes}"));
-        assert!(aff
-            .negative()
-            .iter()
-            .any(|s| s == "{roles} believes in you~ {emotes}"));
+        assert!(
+            aff.positive()
+                .iter()
+                .any(|s| s == "you're such a smart cookie~ {emotes}")
+        );
+        assert!(
+            aff.negative()
+                .iter()
+                .any(|s| s == "{roles} believes in you~ {emotes}")
+        );
     }
 
     #[test]

@@ -5,7 +5,7 @@ Guide for AI agents working in the **mommy** CLI repo. `CLAUDE.md` and
 
 ## Project Overview
 
-**mommy** is a terminal affirmation tool (Rust, edition 2021) that wraps
+**mommy** is a terminal affirmation tool (Rust, edition 2024) that wraps
 shell commands and cargo subcommands with positive/negative feedback.
 Reimplementation of shell-mommy + cargo-mommy in one binary.
 
@@ -63,10 +63,13 @@ binary to a new filename.
 
 ```bash
 cargo build                              # Debug
-cargo build -r                           # Release (see .cargo/config.toml: fixed
-                                          # target triple, so output lands at
-                                          # target/x86_64-unknown-linux-gnu/release/mommy,
-                                          # not target/release/mommy)
+cargo build -r                           # Release, output at target/release/mommy
+                                          # (.cargo/config.toml pins x86-64-v3
+                                          # rustflags per-target — gnu-linux and
+                                          # windows-msvc get it explicitly since a
+                                          # target.<triple>.rustflags key REPLACES
+                                          # [build]'s, it doesn't merge; not a
+                                          # forced --target)
 cargo test                               # 34 tests across 6 modules
 cargo test -- --test-threads=1           # Avoid env var races between tests
 cargo build -r --target x86_64-unknown-linux-musl   # Static Linux
@@ -76,13 +79,25 @@ cargo build -r --target x86_64-pc-windows-msvc      # Windows
 Tests use `LazyLock<Mutex<()>>` to serialize env-var-mutating tests and
 `fastrand::seed(42)` for deterministic randomness.
 
+`[profile.dev]` and `[profile.release.build-override]` in `Cargo.toml` keep
+local iteration fast: dev builds use `codegen-units = 256` and
+`incremental = true` (mirrored by the removed `[build] incremental = false`
+that used to force non-incremental everywhere), and proc-macro/build-script
+deps (`serde_derive`, `syn`, ...) compile at `opt-level = 0` even in a
+release build — only the final `shell-mommy` binary gets the full
+`lto = "fat"` / `codegen-units = 1` treatment from `[profile.release]`.
+
 ## Quality Checks (required before committing)
 
 ```bash
-cargo test
-cargo clippy -- -D warnings     # CI-enforced gate, must be clean
-cargo fmt --check
+cargo test-ci    # = cargo test --locked
+cargo clippy-ci   # = cargo clippy --all-targets --locked -- -D warnings (CI-enforced gate)
+cargo fmt-ci      # = cargo fmt --check
 ```
+
+These are `.cargo/config.toml` `[alias]` shortcuts that mirror
+`.github/workflows/build.yml`'s `test` job exactly; `cargo build-ci` mirrors
+its release build (`build --release --locked`).
 
 `cargo clippy -- -D clippy::all -D clippy::pedantic` surfaces additional
 style opinions beyond the CI gate. Mechanical ones (`uninlined_format_args`,
@@ -123,20 +138,29 @@ back to generic `MOMMYS_*`, then hardcoded defaults. Exception:
   in the Debian packaging job (lines ~99, 108, 112) while `Cargo.toml` is at
   `0.1.6`. Keep these in sync manually, or extract via `cargo metadata
   --no-deps --format-version 1 | jq -r '.packages[0].version'`.
-- **`bash -c` in `src/mommy.rs`** (alias expansion path): intentional, not
-  a vulnerability — this is a CLI tool executing the invoking user's own
-  command line.
-- **Windows**: the core tool (shell wrapper, cargo subcommand, moods,
-  colors, `beg` state) is cross-platform — `cargo check`/`clippy` are clean
-  against `x86_64-pc-windows-gnu` for both feature sets, and `perform_role_transformation`
-  already appends `.exe` via `std::env::consts::EXE_SUFFIX`. The one real
-  gap is the `SHELL_MOMMYS_ALIASES`/`CARGO_MOMMYS_ALIASES` feature, which
-  shells out to `bash -c` with `shopt -s expand_aliases` — a bash builtin,
-  not available without Git Bash/WSL. Everything else (including the
-  no-aliases command path) uses `Command::new(filtered_args[0])` directly
-  and needs no shell at all. `src/state.rs` reads `HOME` with a
-  `USERPROFILE` fallback for this reason — Windows doesn't set `HOME` by
-  default outside Git Bash/MSYS.
+- **`bash -c` / `powershell -Command` in `src/mommy.rs`** (alias expansion
+  path): intentional, not a vulnerability — this is a CLI tool executing the
+  invoking user's own command line.
+- **Windows**: fully supported and verified natively (`cargo build`, `cargo
+  test`, `cargo clippy -- -D warnings`, `cargo fmt --check` all clean on
+  `x86_64-pc-windows-msvc`, including `--features beg`). `.cargo/config.toml`
+  no longer force-pins `build.target` to `x86_64-unknown-linux-gnu` — that
+  pin only broke native (non-`--target`) builds on non-Linux hosts, and CI's
+  `build` job already passes `--target` explicitly per matrix entry so it was
+  never load-bearing there; the x86-64-v3 `rustflags` stay scoped to the
+  `[target.x86_64-unknown-linux-gnu]` table. `perform_role_transformation`
+  appends `.exe` via `std::env::consts::EXE_SUFFIX` and skips the Unix
+  `chmod` step (`#[cfg(unix)]`). `src/state.rs` reads `HOME` with a
+  `USERPROFILE` fallback since Windows doesn't set `HOME` by default outside
+  Git Bash/MSYS. The `SHELL_MOMMYS_ALIASES`/`CARGO_MOMMYS_ALIASES` feature
+  branches on `#[cfg(unix)]` vs `#[cfg(windows)]` in `execute_command`: Unix
+  sources the file with `bash -c` (needs `eval` since bash expands aliases
+  at read time); Windows dot-sources a `.ps1` file with `powershell -Command`
+  (no `eval` needed — PowerShell resolves functions/`Set-Alias` from an
+  earlier statement in the same script). `shell_quote`/`powershell_quote` in
+  `src/utils.rs` are each `#[cfg(unix)]`/`#[cfg(windows)]`-gated to match.
+  Everything else (including the no-aliases command path) uses
+  `Command::new(filtered_args[0])` directly and needs no shell at all.
 - **`.gitignore` had a bare `src/` entry** (inherited from a `makepkg`
   template, meant for the packaging tool's scratch `src/`/`pkg/` dirs) that
   silently shadowed the real source tree and dropped new files from `git

@@ -1,16 +1,20 @@
+#[cfg(windows)]
+use crate::utils::powershell_quote;
+#[cfg(unix)]
+use crate::utils::shell_quote;
 use crate::{
     affirmations::{
-        load_affirmations_with_mood_mixing, load_custom_affirmations_with_mood_mixing,
-        AffirmationData,
+        AffirmationData, load_affirmations_with_mood_mixing,
+        load_custom_affirmations_with_mood_mixing,
     },
     color::random_style_pick,
-    config::{load_config, ConfigMommy},
-    utils::{fill_template, graceful_print, random_vec_pick, shell_quote},
+    config::{ConfigMommy, load_config},
+    utils::{fill_template, graceful_print, random_vec_pick},
 };
 use owo_colors::OwoColorize;
 use std::{
     env,
-    process::{exit, Command},
+    process::{Command, exit},
 };
 
 const RECURSION_LIMIT: usize = 100;
@@ -130,36 +134,77 @@ fn execute_command(
         let new_recursion = config.recursion_limit + 1;
 
         if let Some(ref aliases_path) = config.aliases {
-            // Use bash -c for alias support, but safely quote arguments to prevent
-            // injection. To allow alias expansion, we must use `eval` because
-            // aliases are expanded when a command is read, not when it is
-            // executed.
-            let mut cmd_to_eval = String::new();
+            #[cfg(unix)]
+            {
+                // Use bash -c for alias support, but safely quote arguments to prevent
+                // injection. To allow alias expansion, we must use `eval` because
+                // aliases are expanded when a command is read, not when it is
+                // executed.
+                let mut cmd_to_eval = String::new();
 
-            for (i, arg) in filtered_args.iter().enumerate() {
-                if i > 0 {
-                    cmd_to_eval.push(' ');
+                for (i, arg) in filtered_args.iter().enumerate() {
+                    if i > 0 {
+                        cmd_to_eval.push(' ');
+                    }
+                    if i == 0 && is_safe_for_alias(arg) {
+                        cmd_to_eval.push_str(arg);
+                    } else {
+                        cmd_to_eval.push_str(&shell_quote(arg));
+                    }
                 }
-                if i == 0 && is_safe_for_alias(arg) {
-                    cmd_to_eval.push_str(arg);
-                } else {
-                    cmd_to_eval.push_str(&shell_quote(arg));
-                }
+
+                let run_command = format!(
+                    "shopt -s expand_aliases; . {}; eval {}",
+                    shell_quote(aliases_path),
+                    shell_quote(&cmd_to_eval)
+                );
+
+                let status = Command::new("bash")
+                    .arg("-c")
+                    .arg(&run_command)
+                    .env("SHELL_MOMMY_RECURSION_LIMIT", new_recursion.to_string())
+                    .status()?;
+
+                Ok(status.code().unwrap_or(1))
             }
+            #[cfg(windows)]
+            {
+                // Dot-source the aliases script (PowerShell functions/Set-Alias),
+                // then invoke the command directly - PowerShell resolves
+                // functions/aliases at parse time within the same script, no
+                // `eval` hack needed like bash requires.
+                let first_safe = filtered_args.first().is_some_and(|a| is_safe_for_alias(a));
 
-            let run_command = format!(
-                "shopt -s expand_aliases; . {}; eval {}",
-                shell_quote(aliases_path),
-                shell_quote(&cmd_to_eval)
-            );
+                let parts: Vec<String> = filtered_args
+                    .iter()
+                    .enumerate()
+                    .map(|(i, arg)| {
+                        if i == 0 && first_safe {
+                            (*arg).to_string()
+                        } else {
+                            powershell_quote(arg)
+                        }
+                    })
+                    .collect();
 
-            let status = Command::new("bash")
-                .arg("-c")
-                .arg(&run_command)
-                .env("SHELL_MOMMY_RECURSION_LIMIT", new_recursion.to_string())
-                .status()?;
+                // A quoted command needs the call operator `&` to be invoked
+                // rather than treated as a plain string literal.
+                let invocation = if first_safe {
+                    parts.join(" ")
+                } else {
+                    format!("& {}", parts.join(" "))
+                };
 
-            Ok(status.code().unwrap_or(1))
+                let run_command = format!(". {}; {invocation}", powershell_quote(aliases_path));
+
+                let status = Command::new("powershell")
+                    .args(["-NoLogo", "-NoProfile", "-NonInteractive", "-Command"])
+                    .arg(&run_command)
+                    .env("SHELL_MOMMY_RECURSION_LIMIT", new_recursion.to_string())
+                    .status()?;
+
+                Ok(status.code().unwrap_or(1))
+            }
         } else {
             // No aliases needed - execute command directly without bash -c
             if filtered_args.is_empty() {

@@ -8,8 +8,24 @@ SCCACHE_DIRECT = "true"
 GITOXIDE_CORE_MULTIPACKINDEX = "true"
 
 [build]
-incremental = false
-target = "x86_64-unknown-linux-gnu"
+# sccache — compilation cache, install: `cargo install sccache`. Uncomment to enable.
+# rustc-wrapper = "sccache"
+
+# Baseline for any target without its own [target.<triple>] table below (e.g. the
+# musl target CI builds). A target.<triple>.rustflags key REPLACES this, it does
+# not merge with it — so targets below must repeat -Ctarget-cpu=x86-64-v3 or it
+# silently drops for that target.
+rustflags = ["-C", "target-cpu=x86-64-v3"]
 
 [target.x86_64-unknown-linux-gnu]
 rustflags = ["-C", "target-cpu=x86-64-v3", "-C", "llvm-args=-enable-dfa-jump-thread"]
+
+[target.x86_64-pc-windows-msvc]
+rustflags = ["-C", "target-cpu=x86-64-v3"]
+
+[alias]
+# Mirrors the checks .github/workflows/build.yml runs
+build-ci  = "build --release --locked"
+clippy-ci = "clippy --all-targets --locked -- -D warnings"
+fmt-ci    = "fmt --check"
+test-ci   = "test --locked"

@@ -62,7 +62,9 @@ Available environment variables:
 - `SHELL_MOMMYS_COLOR_RGB` / `CARGO_MOMMYS_COLOR_RGB` - to set custom rgb color for the
   text
 - `SHELL_MOMMYS_ALIASES` / `CARGO_MOMMYS_ALIASES` - provide path to your aliases file
-  for mommy to source
+  for mommy to source. On Linux/macOS this is sourced with `bash` (a `.bashrc`-style
+  file); on Windows it's dot-sourced with `powershell` (a `.ps1` file defining
+  functions or `Set-Alias`)
 - `SHELL_MOMMYS_AFFIRMATIONS` / `CARGO_MOMMYS_AFFIRMATIONS` - provide a path to a valid
   `.json` file, formatted exactly like
   [assets/affirmations.json](https://github.com/sleepymincy/mommy/blob/master/assets/affirmations.json),

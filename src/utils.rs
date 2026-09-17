@@ -93,6 +93,7 @@ pub fn graceful_print<T: std::fmt::Display>(s: T) {
 
 /// Robust shell quoting for single arguments.
 /// Surrounds the argument with single quotes and escapes any existing single quotes.
+#[cfg(unix)]
 pub fn shell_quote(s: &str) -> String {
     if s.is_empty() {
         return "''".to_string();
@@ -105,6 +106,27 @@ pub fn shell_quote(s: &str) -> String {
     for c in s.chars() {
         if c == '\'' {
             quoted.push_str("'\\''");
+        } else {
+            quoted.push(c);
+        }
+    }
+    quoted.push('\'');
+    quoted
+}
+
+/// Robust PowerShell quoting for single arguments.
+/// Surrounds the argument with single quotes and escapes any existing single quotes
+/// (PowerShell single-quoted strings escape `'` by doubling it).
+#[cfg(windows)]
+pub fn powershell_quote(s: &str) -> String {
+    if s.is_empty() {
+        return "''".to_string();
+    }
+    let mut quoted = String::with_capacity(s.len() + 2);
+    quoted.push('\'');
+    for c in s.chars() {
+        if c == '\'' {
+            quoted.push_str("''");
         } else {
             quoted.push(c);
         }
@@ -148,6 +170,7 @@ mod tests {
         assert_eq!(result, "Hello {unknown} world");
     }
 
+    #[cfg(unix)]
     #[test]
     fn test_shell_quote() {
         assert_eq!(shell_quote(""), "''");
@@ -156,5 +179,16 @@ mod tests {
         assert_eq!(shell_quote("don't"), "'don'\\''t'");
         assert_eq!(shell_quote("; id"), "'; id'");
         assert_eq!(shell_quote("'"), "''\\'''");
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn test_powershell_quote() {
+        assert_eq!(powershell_quote(""), "''");
+        assert_eq!(powershell_quote("hello"), "'hello'");
+        assert_eq!(powershell_quote("hello world"), "'hello world'");
+        assert_eq!(powershell_quote("don't"), "'don''t'");
+        assert_eq!(powershell_quote("; id"), "'; id'");
+        assert_eq!(powershell_quote("'"), "''''");
     }
 }
